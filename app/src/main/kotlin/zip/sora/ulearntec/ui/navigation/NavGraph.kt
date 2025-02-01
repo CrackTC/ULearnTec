@@ -30,6 +30,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import kotlinx.serialization.Serializable
 import zip.sora.ulearntec.ui.navigation.main.addAccountScreen
+import zip.sora.ulearntec.ui.navigation.main.addDownloadScreen
 import zip.sora.ulearntec.ui.navigation.main.addHistoryScreen
 import zip.sora.ulearntec.ui.navigation.main.course.addClassScreen
 import zip.sora.ulearntec.ui.navigation.main.course.addTermScreen
@@ -53,6 +54,9 @@ object NavGraph {
 
         @Serializable
         object History
+
+        @Serializable
+        object Download
 
         @Serializable
         object Account
@@ -125,8 +129,8 @@ fun NavGraph() {
                             navController = mainNavController,
                             startDestination = NavGraph.Main.Course,
                             route = NavGraph.Main::class,
-                            enterTransition = { fadeIn(animationSpec = tween(250)) },
-                            exitTransition = { fadeOut(animationSpec = tween(250)) },
+                            enterTransition = { fadeIn(animationSpec = tween(durationMillis = 250, delayMillis = 250)) },
+                            exitTransition = { fadeOut(animationSpec = tween(durationMillis = 250)) },
                             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
                         ) {
                             navigation<NavGraph.Main.Course>(startDestination = NavGraph.Main.Course.Term) {
@@ -151,6 +155,11 @@ fun NavGraph() {
                                 },
                                 onGotoClass = {
                                     mainNavController.navigate(NavGraph.Main.Course.Class(it))
+                                }
+                            )
+                            addDownloadScreen<NavGraph.Main.Download>(
+                                onWatch = {
+                                    navController.navigate(NavGraph.Player(it.id))
                                 }
                             )
                             addAccountScreen<NavGraph.Main.Account>(

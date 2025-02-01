@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -53,6 +54,7 @@ fun DetailSheet(
     entries: List<DetailEntry>,
     onDismissRequest: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(),
+    topContent: @Composable ColumnScope.() -> Unit = {}
 ) {
     ModalBottomSheet(
         sheetState = sheetState,
@@ -66,10 +68,12 @@ fun DetailSheet(
                 style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(16.dp))
+            topContent()
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Spacer(modifier = Modifier.height(16.dp))
                 entries.forEach { entry ->
                     InfoEntry(
                         icon = entry.icon,
@@ -78,6 +82,7 @@ fun DetailSheet(
                         isLink = entry.isLink
                     )
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

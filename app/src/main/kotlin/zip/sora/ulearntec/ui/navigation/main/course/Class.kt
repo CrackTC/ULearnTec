@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavGraphBuilder
@@ -24,6 +25,7 @@ inline fun <reified T : Any> NavGraphBuilder.addClassScreen(
     noinline onLiveClicked: (Live) -> Unit,
 ) {
     composable<T>(typeMap = mapOf(typeOf<Class>() to navTypeOf<Class>())) {
+        val context = LocalContext.current
         val viewModel: ClassViewModel = koinViewModel()
         val uiState by viewModel.uiState.collectAsState()
 
@@ -45,6 +47,9 @@ inline fun <reified T : Any> NavGraphBuilder.addClassScreen(
                     wentToPlay = true
                     onLiveClicked(it)
                 },
+                onShowLiveDetail = { viewModel.showLiveDetail(it) },
+                onHideLiveDetail = { viewModel.hideDetail() },
+                onDownloadClicked = { viewModel.download(context) }
             )
         }
     }

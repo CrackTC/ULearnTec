@@ -1,12 +1,8 @@
 package zip.sora.ulearntec.ui.navigation.main
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavGraphBuilder
@@ -25,27 +21,17 @@ inline fun <reified T : Any> NavGraphBuilder.addHistoryScreen(
     composable<T> {
         val viewModel: HistoryViewModel = koinViewModel()
         val uiState by viewModel.uiState.collectAsState()
-        var wentBack by rememberSaveable { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
 
-        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-            if (wentBack) {
-                wentBack = false
-                viewModel.refresh()
-            }
-        }
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
 
         HistoryScreen(
             uiState = uiState,
-            onLiveClicked = {
-                wentBack = true
-                onLiveClicked(it)
-            },
+            onLiveClicked = onLiveClicked,
             onRemove = viewModel::remove,
             onRefresh = viewModel::refresh,
             // ugly:(, TODO: refactor ClassScreen, pass a placeholder Class and refresh it?
             onGotoClass = {
-                wentBack = true
                 coroutineScope.launch { viewModel.fetchClass(it)?.let(onGotoClass) }
             }
         )

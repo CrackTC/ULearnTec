@@ -15,7 +15,10 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.navigation.toRoute
 import com.google.common.collect.ImmutableList
 import kotlinx.coroutines.delay
@@ -24,16 +27,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import zip.sora.ulearntec.domain.DownloadRepository
 import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.LiveRepository
 import zip.sora.ulearntec.domain.LiveResourcesRepository
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.LiveHistory
 import zip.sora.ulearntec.domain.model.LiveResources
+import zip.sora.ulearntec.domain.model.ResourceDownload
+import zip.sora.ulearntec.domain.model.state
 import zip.sora.ulearntec.playback.ClockExposedAudioRendererFactory
 import zip.sora.ulearntec.playback.ClockSyncedVideoRendererFactory
 import zip.sora.ulearntec.ui.navigation.NavGraph
-import zip.sora.ulearntec.ui.screen.PlayerUiState.*
+import zip.sora.ulearntec.ui.screen.PlayerUiState.Error
+import zip.sora.ulearntec.ui.screen.PlayerUiState.Loading
 import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.Pending
 import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.PlayerCreated
 import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.PlayerCreated.InitBuffering
@@ -49,9 +56,11 @@ sealed interface PlayerUiState {
 
     sealed interface ResourceKnown : PlayerUiState {
         val liveResources: LiveResources
+        val download: ResourceDownload?
 
         data class Pending(
             override val liveResources: LiveResources,
+            override val download: ResourceDownload?,
             override val live: Live,
         ) : ResourceKnown
 
@@ -62,6 +71,7 @@ sealed interface PlayerUiState {
 
             data class InitBuffering(
                 override val liveResources: LiveResources,
+                override val download: ResourceDownload?,
                 override val videoPlayers: List<Player>,
                 override val audioPlayer: Player,
                 override val requestedSpeed: Float,
@@ -70,6 +80,7 @@ sealed interface PlayerUiState {
 
             data class Playing(
                 override val liveResources: LiveResources,
+                override val download: ResourceDownload?,
                 override val videoPlayers: List<Player>,
                 val aspectRatios: List<Float>,
                 override val audioPlayer: Player,
@@ -91,9 +102,13 @@ sealed interface PlayerUiState {
 
 class PlayerViewModel(
     savedStateHandle: SavedStateHandle,
+    private val cacheDataSourceFactory: DataSource.Factory,
+    private val downloadDataSourceFactory: DataSource.Factory,
     private val liveRepository: LiveRepository,
-    private val liveResourcesRepository: LiveResourcesRepository
+    private val liveResourcesRepository: LiveResourcesRepository,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
+
     private val liveId =
         savedStateHandle.toRoute<NavGraph.Player>().liveId
     private val _uiState =
@@ -186,13 +201,16 @@ class PlayerViewModel(
                 }
                 return@launch
             }
-            liveResourcesRepository.setCurrentLive(live.data!!)
-            val resources = liveResourcesRepository.getLiveResources()
+            val resources = liveResourcesRepository.getLiveResources(live.data!!)
             if (resources is ILearnResult.Error) {
                 _uiState.update { Error(resources.error!!, live.data) }
                 return@launch
             }
-            _uiState.update { Pending(resources.data!!, live.data) }
+            val download = downloadRepository.getDownload(resources.data!!)
+            if (download is ILearnResult.Error) {
+                _uiState.update { Error(resources.error!!, live.data) }
+            }
+            _uiState.update { Pending(resources.data, download.data!!, live.data) }
         }
     }
 
@@ -201,10 +219,18 @@ class PlayerViewModel(
         val state = _uiState.value
         if (state !is Pending) throw IllegalStateException()
 
-        var position = 0L
+        val dataSourceFactory =
+            if (state.download?.state == Download.STATE_COMPLETED) downloadDataSourceFactory else cacheDataSourceFactory
+
+        var mediaClockPosition = 0L
         val audioPlayer = state.liveResources.audioPath.let {
             ExoPlayer.Builder(context)
-                .setRenderersFactory(ClockExposedAudioRendererFactory(context) { position = it })
+                .setMediaSourceFactory(
+                    DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+                )
+                .setRenderersFactory(ClockExposedAudioRendererFactory(context) {
+                    mediaClockPosition = it
+                })
                 .build()
                 .apply {
                     val builder = MediaItem.Builder().setUri(it)
@@ -225,7 +251,10 @@ class PlayerViewModel(
 
         val players = state.liveResources.videoList.map {
             ExoPlayer.Builder(context)
-                .setRenderersFactory(ClockSyncedVideoRendererFactory(context) { position })
+                .setMediaSourceFactory(
+                    DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+                )
+                .setRenderersFactory(ClockSyncedVideoRendererFactory(context) { mediaClockPosition })
                 .build()
                 .apply {
                     trackSelectionParameters = trackSelectionParameters
@@ -239,6 +268,7 @@ class PlayerViewModel(
         _uiState.update {
             InitBuffering(
                 state.liveResources,
+                state.download,
                 players,
                 audioPlayer,
                 1.0f,
@@ -274,7 +304,13 @@ class PlayerViewModel(
                 delayMillis += 1000
             }
 
-            liveRepository.updateHistory(LiveHistory(state.live.id, Instant.now().toEpochMilli(), currentPosition))
+            liveRepository.updateHistory(
+                LiveHistory(
+                    state.live.id,
+                    Instant.now().toEpochMilli(),
+                    currentPosition
+                )
+            )
 
             _uiState.update {
                 state.copy(
@@ -337,6 +373,7 @@ class PlayerViewModel(
                     prevState.videoPlayers.forEach { it.play() }
                     Playing(
                         prevState.liveResources,
+                        prevState.download,
                         prevState.videoPlayers,
                         prevState.videoPlayers.map {
                             it.videoSize.let { size ->

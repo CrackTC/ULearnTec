@@ -1,5 +1,8 @@
 package zip.sora.ulearntec.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class LiveResources(
     val resourceId: String,
     val liveId: String,
@@ -9,6 +12,7 @@ data class LiveResources(
     val lastUpdated: Long
 )
 
+@Serializable
 data class Video(
     val id: String,
     val videoCode: String,

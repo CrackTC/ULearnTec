@@ -53,11 +53,14 @@ fun HistoryScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    Scaffold(topBar = { TopAppBar(title = { Text(text = "History") }) }) { innerPadding ->
+    Scaffold(
+        topBar = { TopAppBar(title = { Text(text = "History") }) },
+        modifier = modifier.fillMaxSize()
+    ) { innerPadding ->
         PullToRefreshBox(
             isRefreshing = uiState is HistoryUiState.Loading,
             onRefresh = onRefresh,
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
@@ -169,7 +172,7 @@ private fun HistoryScreenPreview() {
 private fun HistoryScreenErrorPreview() {
     ULearnTecTheme {
         HistoryScreen(
-            uiState = HistoryUiState.Error { "Human is dead, mismatch" },
+            uiState = HistoryUiState.Error(emptyList()) { "Human is dead, mismatch" },
             onLiveClicked = {},
             onRefresh = {},
             onRemove = {},

@@ -18,9 +18,7 @@ class LiveRepositoryImpl(
     private val apiRepository: ApiRepository
 ) : LiveRepository {
 
-    private lateinit var currentClass: Class
-
-    private suspend fun refreshWithClass(clazz: Class): ILearnResult<List<Live>> {
+    override suspend fun refresh(clazz: Class): ILearnResult<List<Live>> {
         apiRepository.getApi().let { res ->
             if (res is ILearnResult.Error) {
                 return ILearnResult.Error(res.error)
@@ -49,21 +47,15 @@ class LiveRepositoryImpl(
         return ILearnResult.Success(live.toLive())
     }
 
-    override suspend fun getClassLives(): ILearnResult<List<Live>> {
-        if (!::currentClass.isInitialized) return ILearnResult.Error { it.getString(R.string.current_class_is_not_set) }
-
-        val clazz = synchronized(this) { currentClass }
+    override suspend fun getClassLives(clazz: Class): ILearnResult<List<Live>> {
         val localLives = liveDao.getClassLives(clazz.id)
 
         if (localLives.isEmpty() || preferenceRepository.isOutOfDate(localLives[0].live.lastUpdated)) {
-            val remoteLives = refreshWithClass(clazz)
+            val remoteLives = refresh(clazz)
             if (remoteLives is ILearnResult.Success) return remoteLives
         }
         return ILearnResult.Success(localLives.map { it.toLive() })
     }
-
-    override suspend fun setCurrentClass(clazz: Class) =
-        synchronized(this) { currentClass = clazz }
 
     override suspend fun updateHistory(liveHistory: LiveHistory) {
         liveDao.upsertHistory(liveHistory.toLiveHistoryEntity())
@@ -76,8 +68,4 @@ class LiveRepositoryImpl(
     override suspend fun getAllLivesWithHistory(): List<Live> {
         return liveDao.getAllLivesWithHistory().map { it.toLive() }
     }
-
-    override suspend fun refresh() =
-        if (::currentClass.isInitialized) refreshWithClass(synchronized(this) { currentClass })
-        else ILearnResult.Error { it.getString(R.string.current_class_is_not_set) }
 }

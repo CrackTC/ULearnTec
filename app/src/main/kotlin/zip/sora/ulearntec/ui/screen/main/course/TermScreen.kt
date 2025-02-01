@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
@@ -379,11 +380,11 @@ private fun SelectionsChipRow(
             enabled = enabled,
             onClick = onShowTermDetailClicked,
             label = {
-                Text(text = "Term Info")
+                Text(text = stringResource(R.string.term_info))
             },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Filled.Info,
+                    imageVector = Icons.Outlined.Info,
                     contentDescription = null,
                     modifier = Modifier.size(AssistChipDefaults.IconSize)
                 )

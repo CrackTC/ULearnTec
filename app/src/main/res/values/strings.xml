@@ -40,9 +40,6 @@
     <string name="wrong_username_or_password">Wrong username or password</string>
     <string name="login_success">Login Success: %1$s</string>
     <string name="no_classes">No classes</string>
-    <string name="current_term_is_not_set">current term is not set</string>
-    <string name="current_class_is_not_set">current class is not set</string>
-    <string name="current_live_is_not_set">current live is not set</string>
     <string name="username_or_password_not_set">username or password not set</string>
     <string name="none">None</string>
     <string name="live_detail">Live Detail</string>
@@ -78,4 +75,7 @@
     <string name="failed_to_fetch_live_resources">failed to fetch live resources</string>
     <string name="failed_to_fetch_user_info">failed to fetch user info</string>
     <string name="history">History</string>
+    <string name="no_download_found_for_resource">no download found for resource</string>
+    <string name="download">Download</string>
+    <string name="term_info">Term Info</string>
 </resources>

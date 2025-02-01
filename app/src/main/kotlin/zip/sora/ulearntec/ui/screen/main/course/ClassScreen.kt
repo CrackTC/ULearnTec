@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.ImageAspectRatio
-import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MeetingRoom
@@ -60,8 +59,14 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Numbers
 import androidx.compose.material.icons.outlined.Room
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Downloading
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -80,7 +85,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -104,10 +108,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.offline.Download
 import coil3.compose.AsyncImage
 import zip.sora.ulearntec.R
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.LiveStatus
+import zip.sora.ulearntec.domain.model.progress
+import zip.sora.ulearntec.domain.model.state
 import zip.sora.ulearntec.ui.component.ClassCardHorizontal
 import zip.sora.ulearntec.ui.component.DetailEntry
 import zip.sora.ulearntec.ui.component.DetailSheet
@@ -121,6 +129,34 @@ import zip.sora.ulearntec.ui.theme.ULearnTecTheme
 import java.time.Instant
 import java.time.format.TextStyle
 
+private enum class IndicatorType {
+    NONE,
+    LOADING,
+    ERROR,
+    START,
+    DELETE,
+    RESUME,
+    PROGRESS
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+private fun getDownloadIndicatorType(uiState: ClassUiState): IndicatorType {
+    if (uiState is ClassUiState.Detail.Loading) return IndicatorType.LOADING
+    if (uiState is ClassUiState.Detail.Error) return IndicatorType.ERROR
+    if (uiState is ClassUiState.Detail.Success) {
+        val download = uiState.download ?: return IndicatorType.START
+        val state = download.state
+        return when (state) {
+            Download.STATE_DOWNLOADING -> IndicatorType.PROGRESS
+            Download.STATE_COMPLETED -> IndicatorType.DELETE
+            Download.STATE_STOPPED -> IndicatorType.RESUME
+            Download.STATE_FAILED -> IndicatorType.ERROR
+            else -> IndicatorType.LOADING
+        }
+    }
+    return IndicatorType.NONE
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun ClassScreen(
@@ -128,6 +164,9 @@ fun ClassScreen(
     onRefresh: () -> Unit,
     onBackButtonClicked: () -> Unit,
     onLiveClicked: (Live) -> Unit,
+    onShowLiveDetail: (Live) -> Unit,
+    onHideLiveDetail: () -> Unit,
+    onDownloadClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -223,10 +262,8 @@ fun ClassScreen(
         )
     }
 
-    var showLiveDetailSheet by rememberSaveable { mutableStateOf(false) }
-    var selectedLiveIndex by rememberSaveable { mutableIntStateOf(0) }
-    if (showLiveDetailSheet) {
-        val live = uiState.lives[selectedLiveIndex]
+    if (uiState is ClassUiState.Detail) {
+        val live = uiState.live
         DetailSheet(
             title = R.string.live_detail,
             entries = listOf(
@@ -239,11 +276,6 @@ fun ClassScreen(
                     name = R.string.resource_id,
                     value = "${live.resourceId}",
                     icon = Icons.AutoMirrored.Filled.Assignment
-                ),
-                DetailEntry(
-                    name = R.string.live_name,
-                    value = live.liveRecordName,
-                    icon = Icons.Filled.LiveTv
                 ),
                 DetailEntry(
                     name = R.string.week,
@@ -371,8 +403,70 @@ fun ClassScreen(
                     icon = Icons.Filled.History,
                 ),
             ),
-            onDismissRequest = { showLiveDetailSheet = false }
-        )
+            onDismissRequest = onHideLiveDetail
+        ) {
+            LiveItem(live, modifier = Modifier.padding(horizontal = 24.dp), enabled = false)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
+                Button(
+                    onClick = {
+                        onHideLiveDetail()
+                        onLiveClicked(live)
+                    },
+                    enabled = live.resourceId != null
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null
+                    )
+                }
+                Button(
+                    onClick = { onDownloadClicked() },
+                    enabled = live.resourceId != null && uiState is ClassUiState.Detail.Success
+                ) {
+                    AnimatedContent(getDownloadIndicatorType(uiState)) { type ->
+                        when (type) {
+                            IndicatorType.LOADING -> CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp)
+                            )
+
+                            IndicatorType.ERROR -> Icon(
+                                imageVector = Icons.Rounded.Error,
+                                contentDescription = null
+                            )
+
+                            IndicatorType.START -> Icon(
+                                imageVector = Icons.Rounded.Download,
+                                contentDescription = null
+                            )
+
+                            IndicatorType.PROGRESS -> CircularProgressIndicator(
+                                progress = { (uiState as ClassUiState.Detail.Success).download!!.progress },
+                                color = MaterialTheme.colorScheme.inversePrimary,
+                                trackColor = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+
+                            IndicatorType.DELETE -> Icon(
+                                imageVector = Icons.Rounded.Delete,
+                                contentDescription = null
+                            )
+
+                            IndicatorType.RESUME -> Icon(
+                                imageVector = Icons.Rounded.Downloading,
+                                contentDescription = null
+                            )
+
+                            else -> {}
+                        }
+                    }
+                }
+            }
+        }
     }
 
     val scrollState = rememberLazyListState()
@@ -482,16 +576,17 @@ fun ClassScreen(
                 }
 
 
-                itemsIndexed(items = filteredLives, key = { _, live -> live.id }) { index, live ->
+                items(items = filteredLives, key = { it.id }) {
                     LiveItem(
-                        onClick = { onLiveClicked(live) },
+                        onClick = { onLiveClicked(it) },
                         onLongClick = {
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            selectedLiveIndex = index
-                            showLiveDetailSheet = true
+                            onShowLiveDetail(it)
                         },
-                        live = live,
-                        modifier = Modifier.animateItem()
+                        live = it,
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .animateItem()
                     )
                 }
 
@@ -571,18 +666,17 @@ private fun StatusDropdownMenu(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LiveItem(
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
     live: Live,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {}
 ) {
     ListItem(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .combinedClickable(
+        modifier = modifier.clip(RoundedCornerShape(12.dp)) then if (!enabled) Modifier else
+            Modifier.combinedClickable(
                 role = Role.Button,
-                onClick = { if (live.resourceId != null) onClick() else onLongClick() },
+                onClick = { if (live.resourceId != null) onClick() },
                 onLongClick = onLongClick
             ),
         leadingContent = {
@@ -645,6 +739,9 @@ private fun ClassScreenPreview() {
                         onRefresh = {},
                         onBackButtonClicked = {},
                         onLiveClicked = {},
+                        onShowLiveDetail = {},
+                        onHideLiveDetail = {},
+                        onDownloadClicked = {}
                     )
                 }
             }
@@ -671,6 +768,9 @@ private fun ClassScreenErrorPreview() {
                         onRefresh = {},
                         onBackButtonClicked = {},
                         onLiveClicked = {},
+                        onShowLiveDetail = {},
+                        onHideLiveDetail = {},
+                        onDownloadClicked = {}
                     )
                 }
             }

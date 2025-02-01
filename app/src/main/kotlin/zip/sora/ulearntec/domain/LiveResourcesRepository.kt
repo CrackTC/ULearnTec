@@ -4,7 +4,6 @@ import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.LiveResources
 
 interface LiveResourcesRepository {
-    suspend fun getLiveResources(): ILearnResult<LiveResources>
-    suspend fun setCurrentLive(live: Live)
-    suspend fun refresh(): ILearnResult<LiveResources>
+    suspend fun getLiveResources(live: Live): ILearnResult<LiveResources>
+    suspend fun refresh(live: Live): ILearnResult<LiveResources>
 }

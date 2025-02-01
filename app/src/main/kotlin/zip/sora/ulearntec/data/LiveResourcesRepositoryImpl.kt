@@ -18,9 +18,7 @@ class LiveResourcesRepositoryImpl(
     private val apiRepository: ApiRepository
 ) : LiveResourcesRepository {
 
-    private lateinit var currentLive: Live
-
-    private suspend fun refreshWithLive(live: Live): ILearnResult<LiveResources> {
+    override suspend fun refresh(live: Live): ILearnResult<LiveResources> {
         apiRepository.getApi().let { res ->
             if (res is ILearnResult.Error) return ILearnResult.Error(res.error)
 
@@ -43,14 +41,11 @@ class LiveResourcesRepositoryImpl(
         }
     }
 
-    override suspend fun getLiveResources(): ILearnResult<LiveResources> {
-        if (!::currentLive.isInitialized) return ILearnResult.Error { it.getString(R.string.current_live_is_not_set) }
-
-        val live = synchronized(this) { currentLive }
+    override suspend fun getLiveResources(live: Live): ILearnResult<LiveResources> {
         val localResources = liveResourcesDao.getLiveResources(live.resourceId!!)
         val localVideoList = liveResourcesDao.getVideos(live.resourceId)
         if (localResources == null || preferenceRepository.isOutOfDate(localResources.lastUpdated)) {
-            val remoteResources = refreshWithLive(live)
+            val remoteResources = refresh(live)
             if (remoteResources is ILearnResult.Success) return remoteResources
         }
         if (localResources != null)
@@ -58,11 +53,4 @@ class LiveResourcesRepositoryImpl(
 
         return ILearnResult.Error { it.getString(R.string.failed_to_fetch_live_resources) }
     }
-
-    override suspend fun setCurrentLive(live: Live) =
-        synchronized(this) { currentLive = live }
-
-    override suspend fun refresh() =
-        if (::currentLive.isInitialized) refreshWithLive(synchronized(this) { currentLive })
-        else ILearnResult.Error { it.getString(R.string.current_live_is_not_set) }
 }

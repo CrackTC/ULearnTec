@@ -3,6 +3,7 @@ package zip.sora.ulearntec.data.local.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.DayOfWeek
 
@@ -24,7 +25,8 @@ enum class LiveEntityStatus {
             onDelete = ForeignKey.CASCADE,
             onUpdate = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index("resource_id")]
 )
 data class LiveEntity(
     @PrimaryKey @ColumnInfo(name = "id") val id: String,

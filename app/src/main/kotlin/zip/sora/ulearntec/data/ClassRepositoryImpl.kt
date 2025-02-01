@@ -1,6 +1,5 @@
 package zip.sora.ulearntec.data
 
-import zip.sora.ulearntec.R
 import zip.sora.ulearntec.data.local.dao.ClassDao
 import zip.sora.ulearntec.domain.ApiRepository
 import zip.sora.ulearntec.domain.ClassRepository
@@ -17,9 +16,7 @@ class ClassRepositoryImpl(
     private val apiRepository: ApiRepository
 ) : ClassRepository {
 
-    private lateinit var currentTerm: Term
-
-    private suspend fun refreshWithTerm(term: Term): ILearnResult<List<Class>> {
+    override suspend fun refresh(term: Term): ILearnResult<List<Class>> {
         apiRepository.getApi().let { res ->
             if (res is ILearnResult.Error) {
                 return ILearnResult.Error(res.error)
@@ -47,27 +44,14 @@ class ClassRepositoryImpl(
         return classDao.getClass(classId)?.toClass()
     }
 
-    override suspend fun getTermClasses(): ILearnResult<List<Class>> {
-        if (!::currentTerm.isInitialized) {
-            return ILearnResult.Error({ it.getString(R.string.current_term_is_not_set) })
-        }
-
-        val term = synchronized(this) { currentTerm }
-
+    override suspend fun getTermClasses(term: Term): ILearnResult<List<Class>> {
         val localClasses = classDao.getTermClasses(term.year, term.num)
         if (localClasses.isEmpty() || preferenceRepository.isOutOfDate(localClasses[0].lastUpdated)) {
-            val remoteClasses = refreshWithTerm(term)
+            val remoteClasses = refresh(term)
             if (remoteClasses is ILearnResult.Success) {
                 return remoteClasses
             }
         }
         return ILearnResult.Success(localClasses.map { it.toClass() })
     }
-
-    override suspend fun setCurrentTerm(term: Term) =
-        synchronized(this) { currentTerm = term }
-
-    override suspend fun refresh() =
-        if (::currentTerm.isInitialized) refreshWithTerm(synchronized(this) { currentTerm })
-        else ILearnResult.Error({ it.getString(R.string.current_term_is_not_set) })
 }

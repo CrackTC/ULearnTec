@@ -16,12 +16,18 @@ import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.ui.screen.main.HistoryUiState.*
 
 sealed interface HistoryUiState {
-    data object Loading : HistoryUiState
+    val allLivesWithHistory: List<Live>
+
+    data class Loading(
+        override val allLivesWithHistory: List<Live>
+    ) : HistoryUiState
+
     data class Success(
-        val allLivesWithHistory: List<Live>
+        override val allLivesWithHistory: List<Live>
     ) : HistoryUiState
 
     data class Error(
+        override val allLivesWithHistory: List<Live>,
         val message: (Context) -> String
     ) : HistoryUiState
 }
@@ -30,7 +36,7 @@ class HistoryViewModel(
     private val liveRepository: LiveRepository,
     private val classRepository: ClassRepository
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<HistoryUiState>(Loading)
+    private val _uiState = MutableStateFlow<HistoryUiState>(Loading(emptyList()))
     val uiState = _uiState.asStateFlow()
 
     suspend fun fetchClass(classId: String): Class? {
@@ -47,11 +53,11 @@ class HistoryViewModel(
 
     // here we can only refresh locally
     fun refresh() {
-        _uiState.update { Loading }
+        _uiState.update { Loading(it.allLivesWithHistory) }
         viewModelScope.launch {
             val lives = liveRepository.getAllLivesWithHistory()
             if (lives.isEmpty()) {
-                _uiState.update { Error { it.getString(R.string.no_history_yet) } }
+                _uiState.update { prev -> Error(prev.allLivesWithHistory) { it.getString(R.string.no_history_yet) } }
                 return@launch
             }
 

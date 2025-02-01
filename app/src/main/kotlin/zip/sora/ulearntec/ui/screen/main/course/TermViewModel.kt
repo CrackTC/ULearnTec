@@ -71,9 +71,8 @@ class TermViewModel(
             currentTerm =
                 terms.data!!.firstOrNull { it.year == currentTerm.year && it.num == currentTerm.num }
                     ?: terms.data.last()
-            classRepository.setCurrentTerm(currentTerm)
 
-            val classes = classRepository.refresh()
+            val classes = classRepository.refresh(currentTerm)
             if (classes is ILearnResult.Error) {
                 _uiState.update {
                     TermUiState.Error(classes.error!!, it.currentTerm, it.terms, it.classes)
@@ -104,8 +103,7 @@ class TermViewModel(
         }
 
         viewModelScope.launch {
-            classRepository.setCurrentTerm(term)
-            val classes = classRepository.getTermClasses()
+            val classes = classRepository.getTermClasses(term)
             if (classes is ILearnResult.Error) {
                 _uiState.update {
                     TermUiState.Error(classes.error!!, it.currentTerm, it.terms, it.classes)
@@ -141,8 +139,7 @@ class TermViewModel(
             }
 
             currentTerm = terms.data!!.last()
-            classRepository.setCurrentTerm(currentTerm)
-            val classes = classRepository.getTermClasses()
+            val classes = classRepository.getTermClasses(currentTerm)
             if (classes is ILearnResult.Error) {
                 _uiState.update {
                     TermUiState.Error(classes.error!!, currentTerm, terms.data, it.classes)
