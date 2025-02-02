@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.UserRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.User
 
 sealed interface AccountUiState {
@@ -38,12 +39,12 @@ class AccountViewModel(
         _uiState.update { AccountUiState.Loading(it.user) }
         viewModelScope.launch {
             val user = userRepository.refresh()
-            if (user is ILearnResult.Error) {
-                _uiState.update { AccountUiState.Error(user.error!!, it.user) }
+            if (user.isError()) {
+                _uiState.update { AccountUiState.Error(user.error, it.user) }
                 return@launch
             }
 
-            _uiState.update { AccountUiState.Success(user.data!!) }
+            _uiState.update { AccountUiState.Success(user.data) }
         }
     }
 
@@ -54,12 +55,12 @@ class AccountViewModel(
     init {
         viewModelScope.launch {
             val user = userRepository.getCurrentUser()
-            if (user is ILearnResult.Error) {
-                _uiState.update { AccountUiState.Error(user.error!!, it.user) }
+            if (user.isError()) {
+                _uiState.update { AccountUiState.Error(user.error, it.user) }
                 return@launch
             }
 
-            _uiState.update { AccountUiState.Success(user.data!!) }
+            _uiState.update { AccountUiState.Success(user.data) }
         }
     }
 }

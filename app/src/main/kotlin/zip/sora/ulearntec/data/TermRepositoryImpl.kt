@@ -7,6 +7,7 @@ import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.PreferenceRepository
 import zip.sora.ulearntec.domain.model.Term
 import zip.sora.ulearntec.domain.TermRepository
+import zip.sora.ulearntec.domain.isError
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -28,11 +29,11 @@ class TermRepositoryImpl(
 
     override suspend fun refresh(): ILearnResult<List<Term>> {
         apiRepository.getApi().let { res ->
-            if (res is ILearnResult.Error)
+            if (res.isError())
                 return ILearnResult.Error(res.error)
 
             try {
-                val remoteAllTerms = res.data!!.tecService.getTerms()
+                val remoteAllTerms = res.data.tecService.getTerms()
                 val user = userDao.getCurrentUser()!!
                 val lastUpdated = Instant.now().toEpochMilli()
                 termDao.refresh(remoteAllTerms.map { it.toTermEntity(user.studentId, lastUpdated) })

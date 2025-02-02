@@ -4,12 +4,11 @@ import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
-import zip.sora.ulearntec.DOWNLOAD_WORK_NAME
 
 @OptIn(UnstableApi::class)
 data class ResourceDownload(
     val resources: LiveResources,
-    val audioDownload: Download,
+    val audioDownload: Download?,
     val phaseDownload: Download?,
     val videoDownloads: List<Download>,
 )
@@ -24,7 +23,7 @@ private val Download?.contentLengthOrZero
 
 val ResourceDownload.downloaded: Long
     @OptIn(UnstableApi::class)
-    get() = audioDownload.bytesDownloaded +
+    get() = (audioDownload?.bytesDownloaded ?: 0) +
             (phaseDownload?.bytesDownloaded ?: 0) +
             videoDownloads.sumOf { it.bytesDownloaded }
 
@@ -46,8 +45,8 @@ val ResourceDownload.state: Int
     @OptIn(UnstableApi::class)
     get() {
         val stateList = buildList {
-            add(audioDownload.state)
             addAll(videoDownloads.map { it.state })
+            if (audioDownload != null) add(audioDownload.state)
             if (phaseDownload != null) add(phaseDownload.state)
         }
 

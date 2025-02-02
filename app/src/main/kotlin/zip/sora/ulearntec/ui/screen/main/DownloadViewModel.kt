@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import zip.sora.ulearntec.domain.DownloadRepository
 import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.LiveRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.ResourceDownload
 
@@ -58,13 +59,13 @@ class DownloadViewModel(
             val downloads = downloadRepository.getAllDownloads()
             val lives = downloads.map {
                 val live = liveRepository.getLive(it.resources.liveId)
-                if (live is ILearnResult.Error) {
+                if (live.isError()) {
                     _uiState.update { prev ->
-                        DownloadUiState.Error(prev.downloads, prev.lives, live.error!!)
+                        DownloadUiState.Error(prev.downloads, prev.lives, live.error)
                     }
                     return@launch
                 }
-                live.data!!
+                live.data
             }
             _uiState.update { DownloadUiState.Success(downloads, lives) }
 
@@ -76,7 +77,8 @@ class DownloadViewModel(
                 val oldSet = state.downloads.map { it.resources.liveId }.toSet()
 
                 val addedLives = (newSet - oldSet).map { liveRepository.getLive(it) }
-                val error = addedLives.firstOrNull { it is ILearnResult.Error }?.error
+                val error =
+                    addedLives.filterIsInstance<ILearnResult.Error<Live>>().firstOrNull()?.error
 
                 if (error != null) _uiState.update {
                     DownloadUiState.Error(
@@ -85,7 +87,8 @@ class DownloadViewModel(
                         error
                     )
                 } else {
-                    val idLiveMap = addedLives.associate { Pair(it.data!!.id, it.data) } +
+                    val idLiveMap = addedLives.filterIsInstance<ILearnResult.Success<Live>>()
+                        .associate { Pair(it.data.id, it.data) } +
                             state.lives.associateBy { it.id }
 
                     _uiState.update {

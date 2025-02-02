@@ -15,9 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zip.sora.ulearntec.domain.DownloadRepository
-import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.LiveRepository
 import zip.sora.ulearntec.domain.LiveResourcesRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Class
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.LiveResources
@@ -91,16 +91,12 @@ class ClassViewModel(
         val state = _uiState.value
         if (state !is ClassUiState.Detail.Success || state.resources == null) return
 
-        when (state.download?.state){
+        when (state.download?.state) {
             null -> downloadRepository.downloadLive(context, state.resources)
             Download.STATE_COMPLETED -> downloadRepository.removeDownload(context, state.resources)
             Download.STATE_DOWNLOADING -> downloadRepository.pauseDownload(context, state.resources)
             Download.STATE_STOPPED -> downloadRepository.resumeDownload(context, state.resources)
             else -> {}
-        }
-
-        _uiState.update {
-            state.copy(download = downloadRepository.getDownload(state.resources).data)
         }
     }
 
@@ -113,22 +109,26 @@ class ClassViewModel(
             _uiState.update { ClassUiState.Detail.Loading(it.clazz, it.lives, live) }
             detailJob = viewModelScope.launch {
                 val resources = liveResourcesRepository.getLiveResources(live)
-                if (resources is ILearnResult.Error) {
+                if (resources.isError()) {
                     _uiState.update {
-                        ClassUiState.Detail.Error(it.clazz, it.lives, live, resources.error!!)
+                        ClassUiState.Detail.Error(it.clazz, it.lives, live, resources.error)
                     }
                     return@launch
                 }
 
                 while (true) {
-                    val download = downloadRepository.getDownload(resources.data!!)
+                    val download = downloadRepository.getDownload(resources.data).let {
+                        if (it.isError()) null
+                        else it.data
+                    }
+
                     _uiState.update {
                         ClassUiState.Detail.Success(
                             it.clazz,
                             it.lives,
                             live,
                             resources.data,
-                            download.data
+                            download
                         )
                     }
                     delay(1000)
@@ -149,12 +149,12 @@ class ClassViewModel(
         viewModelScope.launch {
             val lives =
                 if (online) liveRepository.refresh(clazz) else liveRepository.getClassLives(clazz)
-            if (lives is ILearnResult.Error) {
-                _uiState.update { ClassUiState.Error(it.clazz, it.lives, lives.error!!) }
+            if (lives.isError()) {
+                _uiState.update { ClassUiState.Error(it.clazz, it.lives, lives.error) }
                 return@launch
             }
 
-            _uiState.update { ClassUiState.Success(clazz, lives.data!!) }
+            _uiState.update { ClassUiState.Success(clazz, lives.data) }
         }
     }
 

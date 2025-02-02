@@ -9,11 +9,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zip.sora.ulearntec.R
 import zip.sora.ulearntec.domain.ClassRepository
-import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.TermRepository
 import zip.sora.ulearntec.domain.UserRepository
-import zip.sora.ulearntec.domain.model.Term
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Class
+import zip.sora.ulearntec.domain.model.Term
 
 sealed interface TermUiState {
     val currentTerm: Term?
@@ -61,27 +61,27 @@ class TermViewModel(
         _uiState.update { TermUiState.Loading(it.terms, it.classes, it.currentTerm) }
         viewModelScope.launch {
             val terms = termRepository.refresh()
-            if (terms is ILearnResult.Error) {
+            if (terms.isError()) {
                 _uiState.update {
-                    TermUiState.Error(terms.error!!, it.currentTerm, it.terms, it.classes)
+                    TermUiState.Error(terms.error, it.currentTerm, it.terms, it.classes)
                 }
                 return@launch
             }
 
             currentTerm =
-                terms.data!!.firstOrNull { it.year == currentTerm.year && it.num == currentTerm.num }
+                terms.data.firstOrNull { it.year == currentTerm.year && it.num == currentTerm.num }
                     ?: terms.data.last()
 
             val classes = classRepository.refresh(currentTerm)
-            if (classes is ILearnResult.Error) {
+            if (classes.isError()) {
                 _uiState.update {
-                    TermUiState.Error(classes.error!!, it.currentTerm, it.terms, it.classes)
+                    TermUiState.Error(classes.error, it.currentTerm, it.terms, it.classes)
                 }
                 return@launch
             }
 
             _uiState.update {
-                if (classes.data!!.isEmpty()) TermUiState.Error(
+                if (classes.data.isEmpty()) TermUiState.Error(
                     { ctx -> ctx.getString(R.string.no_classes) },
                     currentTerm,
                     it.terms,
@@ -104,15 +104,15 @@ class TermViewModel(
 
         viewModelScope.launch {
             val classes = classRepository.getTermClasses(term)
-            if (classes is ILearnResult.Error) {
+            if (classes.isError()) {
                 _uiState.update {
-                    TermUiState.Error(classes.error!!, it.currentTerm, it.terms, it.classes)
+                    TermUiState.Error(classes.error, it.currentTerm, it.terms, it.classes)
                 }
                 return@launch
             }
 
             _uiState.update {
-                if (classes.data!!.isEmpty()) TermUiState.Error(
+                if (classes.data.isEmpty()) TermUiState.Error(
                     { ctx -> ctx.getString(R.string.no_classes) },
                     currentTerm,
                     it.terms,
@@ -131,24 +131,24 @@ class TermViewModel(
             }
 
             val terms = termRepository.getAllTerms()
-            if (terms is ILearnResult.Error) {
+            if (terms.isError()) {
                 _uiState.update {
-                    TermUiState.Error(terms.error!!, it.currentTerm, it.terms, it.classes)
+                    TermUiState.Error(terms.error, it.currentTerm, it.terms, it.classes)
                 }
                 return@launch
             }
 
-            currentTerm = terms.data!!.last()
+            currentTerm = terms.data.last()
             val classes = classRepository.getTermClasses(currentTerm)
-            if (classes is ILearnResult.Error) {
+            if (classes.isError()) {
                 _uiState.update {
-                    TermUiState.Error(classes.error!!, currentTerm, terms.data, it.classes)
+                    TermUiState.Error(classes.error, currentTerm, terms.data, it.classes)
                 }
                 return@launch
             }
 
             _uiState.update {
-                if (classes.data!!.isEmpty()) TermUiState.Error(
+                if (classes.data.isEmpty()) TermUiState.Error(
                     { ctx -> ctx.getString(R.string.no_classes) },
                     currentTerm,
                     terms.data,

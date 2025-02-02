@@ -8,6 +8,7 @@ import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.LiveRepository
 import zip.sora.ulearntec.domain.PreferenceRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.LiveHistory
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
@@ -20,12 +21,10 @@ class LiveRepositoryImpl(
 
     override suspend fun refresh(clazz: Class): ILearnResult<List<Live>> {
         apiRepository.getApi().let { res ->
-            if (res is ILearnResult.Error) {
-                return ILearnResult.Error(res.error)
-            }
+            if (res.isError()) return ILearnResult.Error(res.error)
 
             try {
-                val remoteLives = res.data!!.tecService.getClassLives(clazz.id)
+                val remoteLives = res.data.tecService.getClassLives(clazz.id)
                 val lastUpdated = Instant.now().toEpochMilli()
                 liveDao.refresh(
                     clazz.id,

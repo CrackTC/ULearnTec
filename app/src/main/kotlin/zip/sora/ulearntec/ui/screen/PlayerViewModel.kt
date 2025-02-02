@@ -28,9 +28,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zip.sora.ulearntec.domain.DownloadRepository
-import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.LiveRepository
 import zip.sora.ulearntec.domain.LiveResourcesRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.LiveHistory
 import zip.sora.ulearntec.domain.model.LiveResources
@@ -195,22 +195,22 @@ class PlayerViewModel(
     private fun initializeResources() {
         viewModelScope.launch {
             val live = liveRepository.getLive(liveId)
-            if (live is ILearnResult.Error) {
-                _uiState.update {
-                    Error(live.error!!, null)
-                }
+            if (live.isError()) {
+                _uiState.update { Error(live.error, null) }
                 return@launch
             }
-            val resources = liveResourcesRepository.getLiveResources(live.data!!)
-            if (resources is ILearnResult.Error) {
-                _uiState.update { Error(resources.error!!, live.data) }
+            val resources = liveResourcesRepository.getLiveResources(live.data)
+            if (resources.isError()) {
+                _uiState.update { Error(resources.error, live.data) }
                 return@launch
             }
-            val download = downloadRepository.getDownload(resources.data!!)
-            if (download is ILearnResult.Error) {
-                _uiState.update { Error(resources.error!!, live.data) }
+            val download = downloadRepository.getDownload(resources.data)
+            if (download.isError()) {
+                // no download found, pass null
+                _uiState.update { Pending(resources.data, null, live.data) }
+                return@launch
             }
-            _uiState.update { Pending(resources.data, download.data!!, live.data) }
+            _uiState.update { Pending(resources.data, download.data, live.data) }
         }
     }
 
@@ -223,31 +223,36 @@ class PlayerViewModel(
             if (state.download?.state == Download.STATE_COMPLETED) downloadDataSourceFactory else cacheDataSourceFactory
 
         var mediaClockPosition = 0L
-        val audioPlayer = state.liveResources.audioPath.let {
-            ExoPlayer.Builder(context)
-                .setMediaSourceFactory(
-                    DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
-                )
-                .setRenderersFactory(ClockExposedAudioRendererFactory(context) {
-                    mediaClockPosition = it
-                })
-                .build()
-                .apply {
-                    val builder = MediaItem.Builder().setUri(it)
-                    val phaseUrl = state.liveResources.phaseUrl
-                    if (phaseUrl.isNotBlank()) {
-                        builder.setSubtitleConfigurations(
-                            listOf(
-                                MediaItem.SubtitleConfiguration.Builder(Uri.parse(phaseUrl))
-                                    .setMimeType(MimeTypes.TEXT_VTT)
-                                    .setSelectionFlags(C.SELECTION_FLAG_FORCED)
-                                    .build()
+        val audioPlayer =
+            (state.liveResources.audioPath.ifBlank { state.liveResources.videoList[0].videoPath }).let {
+                ExoPlayer.Builder(context)
+                    .setMediaSourceFactory(
+                        DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+                    )
+                    .setRenderersFactory(ClockExposedAudioRendererFactory(context) {
+                        mediaClockPosition = it
+                    })
+                    .build()
+                    .apply {
+                        trackSelectionParameters = trackSelectionParameters
+                            .buildUpon()
+                            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+                            .build()
+                        val builder = MediaItem.Builder().setUri(it)
+                        val phaseUrl = state.liveResources.phaseUrl
+                        if (phaseUrl.isNotBlank()) {
+                            builder.setSubtitleConfigurations(
+                                listOf(
+                                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(phaseUrl))
+                                        .setMimeType(MimeTypes.TEXT_VTT)
+                                        .setSelectionFlags(C.SELECTION_FLAG_FORCED)
+                                        .build()
+                                )
                             )
-                        )
+                        }
+                        setMediaItem(builder.build())
                     }
-                    setMediaItem(builder.build())
-                }
-        }
+            }
 
         val players = state.liveResources.videoList.map {
             ExoPlayer.Builder(context)

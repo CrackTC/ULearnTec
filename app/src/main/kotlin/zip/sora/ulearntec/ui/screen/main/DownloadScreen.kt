@@ -80,7 +80,8 @@ fun DownloadScreen(
                     onPause = { onPause(download) },
                     onWatch = { if (live != null) onWatch(live) },
                     download = download,
-                    live = live
+                    live = live,
+                    modifier = Modifier.animateItem()
                 )
             }
         }

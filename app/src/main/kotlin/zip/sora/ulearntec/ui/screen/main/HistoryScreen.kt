@@ -64,7 +64,7 @@ fun HistoryScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            if (uiState is HistoryUiState.Success) {
+            if (uiState !is HistoryUiState.Error) {
                 LazyColumn(
                     contentPadding = PaddingValues(vertical = 16.dp),
                     modifier = Modifier.fillMaxHeight()
@@ -74,7 +74,8 @@ fun HistoryScreen(
                             onClick = { onLiveClicked(it) },
                             onLongClick = { onGotoClass(it.classId) },
                             onRemove = { onRemove(it) },
-                            live = it
+                            live = it,
+                            modifier = Modifier.animateItem()
                         )
                     }
                 }

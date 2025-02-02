@@ -12,6 +12,7 @@ import kotlinx.serialization.json.Json
 import zip.sora.ulearntec.R
 import zip.sora.ulearntec.domain.DownloadRepository
 import zip.sora.ulearntec.domain.ILearnResult
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.LiveResources
 import zip.sora.ulearntec.domain.model.ResourceDownload
 import zip.sora.ulearntec.playback.ILearnDownloadService
@@ -20,44 +21,24 @@ import zip.sora.ulearntec.playback.ILearnDownloadService
 class DownloadRepositoryImpl(
     private val downloadManager: DownloadManager
 ) : DownloadRepository {
+    private fun LiveResources.buildResourcesList(): List<String> = buildList {
+        if (audioPath.isNotBlank()) add(audioPath)
+        if (phaseUrl.isNotBlank()) add(phaseUrl)
+        addAll(videoList.map { it.videoPath })
+    }
+
     override fun downloadLive(context: Context, resources: LiveResources) {
         val data = Json.encodeToString(resources).toByteArray()
-        val audioRequest = DownloadRequest.Builder(
-            resources.audioPath,
-            Uri.parse(resources.audioPath)
-        ).setData(data).build()
 
-        DownloadService.sendAddDownload(
-            context,
-            ILearnDownloadService::class.java,
-            audioRequest,
-            false
-        )
-
-        resources.videoList.forEach {
-            val videoRequest = DownloadRequest.Builder(
-                it.videoPath,
-                Uri.parse(it.videoPath)
-            ).setData(data).build()
+        resources.buildResourcesList().forEach {
+            val request = DownloadRequest.Builder(it, Uri.parse(it))
+                .setData(data)
+                .build()
 
             DownloadService.sendAddDownload(
                 context,
                 ILearnDownloadService::class.java,
-                videoRequest,
-                false
-            )
-        }
-
-        if (resources.phaseUrl.isNotBlank()) {
-            val phaseRequest = DownloadRequest.Builder(
-                resources.phaseUrl,
-                Uri.parse(resources.phaseUrl)
-            ).setData(data).build()
-
-            DownloadService.sendAddDownload(
-                context,
-                ILearnDownloadService::class.java,
-                phaseRequest,
+                request,
                 false
             )
         }
@@ -69,26 +50,16 @@ class DownloadRepositoryImpl(
         reason: Int
     ): ILearnResult<Unit> {
         val download = getDownload(resources)
-        if (download is ILearnResult.Error) {
-            return ILearnResult.Error(download.error!!)
-        }
+        if (download.isError()) return ILearnResult.Error(download.error)
 
-        download.data!!.let {
-            buildList {
-                add(it.resources.audioPath)
-                if (it.resources.phaseUrl.isNotBlank()) {
-                    add(it.resources.phaseUrl)
-                }
-                addAll(it.resources.videoList.map { it.videoPath })
-            }.forEach { id ->
-                DownloadService.sendSetStopReason(
-                    context,
-                    ILearnDownloadService::class.java,
-                    id,
-                    reason,
-                    false
-                )
-            }
+        resources.buildResourcesList().forEach { id ->
+            DownloadService.sendSetStopReason(
+                context,
+                ILearnDownloadService::class.java,
+                id,
+                reason,
+                false
+            )
         }
 
         return ILearnResult.Success(Unit)
@@ -99,23 +70,15 @@ class DownloadRepositoryImpl(
 
     override fun removeDownload(context: Context, resources: LiveResources): ILearnResult<Unit> {
         val download = getDownload(resources)
-        if (download is ILearnResult.Error) {
-            return ILearnResult.Error(download.error!!)
-        }
+        if (download.isError()) return ILearnResult.Error(download.error)
 
-        download.data!!.let {
-            buildList {
-                add(it.resources.audioPath)
-                if (it.resources.phaseUrl.isNotBlank()) add(it.resources.phaseUrl)
-                addAll(it.resources.videoList.map { it.videoPath })
-            }.forEach { id ->
-                DownloadService.sendRemoveDownload(
-                    context,
-                    ILearnDownloadService::class.java,
-                    id,
-                    false
-                )
-            }
+        resources.buildResourcesList().forEach { id ->
+            DownloadService.sendRemoveDownload(
+                context,
+                ILearnDownloadService::class.java,
+                id,
+                false
+            )
         }
 
         return ILearnResult.Success(Unit)
@@ -128,7 +91,7 @@ class DownloadRepositoryImpl(
         val phaseDownload = index.getDownload(resources.phaseUrl)
         val videoDownloads = resources.videoList.map { index.getDownload(it.videoPath) }
 
-        if (audioDownload == null || videoDownloads.any { it == null }) {
+        if (videoDownloads.any { it == null }) {
             return ILearnResult.Error { it.getString(R.string.no_download_found_for_resource) }
         }
 
@@ -157,7 +120,7 @@ class DownloadRepositoryImpl(
 
                 ResourceDownload(
                     resources = resources,
-                    audioDownload = idDownloadMap[resources.audioPath]!!,
+                    audioDownload = idDownloadMap[resources.audioPath],
                     phaseDownload = idDownloadMap[resources.phaseUrl],
                     videoDownloads = resources.videoList.map { video -> idDownloadMap[video.videoPath]!! }
                 )

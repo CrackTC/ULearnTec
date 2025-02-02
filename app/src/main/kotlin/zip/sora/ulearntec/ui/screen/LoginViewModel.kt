@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.UserRepository
+import zip.sora.ulearntec.domain.isError
 
 sealed interface LoginUiState {
     data object Normal : LoginUiState
@@ -37,17 +37,16 @@ class LoginViewModel(
 
         viewModelScope.launch {
             try {
-                when (val res = userRepository.login(username, password)) {
-                    is ILearnResult.Success -> _uiState.update {
-                        LoginUiState.Success(res.data!!.studentName)
-                    }
-
-                    else -> _uiState.update { LoginUiState.Error(res.error!!) }
+                val res = userRepository.login(username, password)
+                if (res.isError()) {
+                    _uiState.update { LoginUiState.Error(res.error) }
+                } else {
+                    _uiState.update { LoginUiState.Success(res.data.studentName) }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { LoginUiState.Error({ e.stackTraceToString() }) }
+                _uiState.update { LoginUiState.Error { e.stackTraceToString() } }
             }
         }
     }

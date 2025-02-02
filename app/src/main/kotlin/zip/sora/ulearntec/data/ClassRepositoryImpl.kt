@@ -5,6 +5,7 @@ import zip.sora.ulearntec.domain.ApiRepository
 import zip.sora.ulearntec.domain.ClassRepository
 import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.PreferenceRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Class
 import zip.sora.ulearntec.domain.model.Term
 import java.time.Instant
@@ -18,13 +19,11 @@ class ClassRepositoryImpl(
 
     override suspend fun refresh(term: Term): ILearnResult<List<Class>> {
         apiRepository.getApi().let { res ->
-            if (res is ILearnResult.Error) {
-                return ILearnResult.Error(res.error)
-            }
+            if (res.isError()) return ILearnResult.Error(res.error)
 
             try {
                 val remoteClasses =
-                    res.data!!.tecService.getTermClasses(term.year, term.num)
+                    res.data.tecService.getTermClasses(term.year, term.num)
                 val lastUpdated = Instant.now().toEpochMilli()
                 classDao.refresh(
                     term.year,
@@ -35,7 +34,7 @@ class ClassRepositoryImpl(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                return ILearnResult.Error({ e.stackTraceToString() })
+                return ILearnResult.Error { e.stackTraceToString() }
             }
         }
     }

@@ -7,6 +7,7 @@ import zip.sora.ulearntec.domain.ApiRepository
 import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.PreferenceRepository
 import zip.sora.ulearntec.domain.UserRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.User
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
@@ -30,12 +31,10 @@ class UserRepositoryImpl(
 
     override suspend fun refresh(): ILearnResult<User> {
         apiRepository.getApi().let { res ->
-            if (res is ILearnResult.Error) {
-                return ILearnResult.Error(res.error)
-            }
+            if (res.isError()) return ILearnResult.Error(res.error)
 
             try {
-                val remoteUser = res.data!!.tecService.getSelf()
+                val remoteUser = res.data.tecService.getSelf()
                 userDao.upsert(remoteUser.toUserEntity(Instant.now().toEpochMilli()))
                 return ILearnResult.Success(userDao.getCurrentUser()!!.toUser())
             } catch (e: CancellationException) {

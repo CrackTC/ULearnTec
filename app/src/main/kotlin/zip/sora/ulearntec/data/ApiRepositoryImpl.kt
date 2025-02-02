@@ -7,6 +7,7 @@ import zip.sora.ilearnapi.ILearnApi
 import zip.sora.ulearntec.domain.ApiRepository
 import zip.sora.ulearntec.domain.ILearnResult
 import zip.sora.ulearntec.domain.PreferenceRepository
+import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Credential
 
 class ApiRepositoryImpl(
@@ -18,10 +19,10 @@ class ApiRepositoryImpl(
     override suspend fun getApi(): ILearnResult<ILearnApi> =
         api?.let { ILearnResult.Success(api!!) } ?: preferenceRepository.getCredential()
             .let { res ->
-                if (res is ILearnResult.Error) ILearnResult.Error(res.error)
+                if (res.isError()) ILearnResult.Error(res.error)
                 else ILearnResult.Success(
                     ILearnApi(
-                        res.data!!.username,
+                        res.data.username,
                         res.data.password,
                         { tecSession ->
                             CoroutineScope(Dispatchers.Default).launch {
