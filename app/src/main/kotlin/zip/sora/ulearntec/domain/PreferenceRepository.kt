@@ -20,4 +20,7 @@ interface PreferenceRepository {
     suspend fun getCredential(): ILearnResult<Credential>
     suspend fun updateCredential(credential: Credential)
     suspend fun clearCredential()
+
+    suspend fun getMaxPlayerCacheMb(): Long
+    suspend fun setMaxPlayerCacheMb(mb: Long)
 }

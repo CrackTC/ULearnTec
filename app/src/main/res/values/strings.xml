@@ -4,7 +4,6 @@
     <string name="password">Password</string>
     <string name="username">Username</string>
     <string name="username_hint">Without email suffix, e.g. laijm2122</string>
-    <string name="account">Account</string>
     <string name="account_information">Account Information</string>
     <string name="student_id">Student ID</string>
     <string name="text_copied">Text copied</string>
@@ -71,11 +70,19 @@
     <string name="term_start_date">Term Start Date</string>
     <string name="term_end_date">Term End Date</string>
     <string name="live_not_found">live %1$s not found</string>
-    <string name="no_history_yet">no history yet</string>
+    <string name="no_history_yet">No history yet</string>
     <string name="failed_to_fetch_live_resources">failed to fetch live resources</string>
     <string name="failed_to_fetch_user_info">failed to fetch user info</string>
     <string name="history">History</string>
     <string name="no_download_found_for_resource">no download found for resource</string>
     <string name="download">Download</string>
     <string name="term_info">Term Info</string>
+    <string name="no_lives">No lives</string>
+    <string name="no_downloads_yet">No downloads yet</string>
+    <string name="license">License</string>
+    <string name="more">More</string>
+    <string name="settings">Settings</string>
+    <string name="logout">Logout</string>
+    <string name="about">About</string>
+    <string name="project_url">Project URL</string>
 </resources>

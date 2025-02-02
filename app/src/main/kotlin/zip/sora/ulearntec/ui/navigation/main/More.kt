@@ -7,21 +7,24 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import zip.sora.ulearntec.ui.screen.main.AccountScreen
-import zip.sora.ulearntec.ui.screen.main.AccountViewModel
+import zip.sora.ulearntec.ui.screen.main.MoreScreen
+import zip.sora.ulearntec.ui.screen.main.MoreViewModel
 
 
-inline fun <reified T : Any> NavGraphBuilder.addAccountScreen(
-    noinline onLogout: () -> Unit
+inline fun <reified T : Any> NavGraphBuilder.addMoreScreen(
+    noinline onLogout: () -> Unit,
+    noinline onAboutClicked: () -> Unit,
+    noinline onSettingsClicked: () -> Unit,
 ) {
     composable<T> {
-        val viewModel: AccountViewModel = koinViewModel()
+        val viewModel: MoreViewModel = koinViewModel()
         val uiState by viewModel.uiState.collectAsState()
         val coroutineScope = rememberCoroutineScope()
-        AccountScreen(
+        MoreScreen(
             uiState = uiState,
             onRefresh = { viewModel.refresh() },
-            onSettingsClicked = {},
+            onSettingsClicked = onSettingsClicked,
+            onAboutClicked = onAboutClicked,
             onLogoutClicked = {
                 coroutineScope.launch {
                     viewModel.logout()

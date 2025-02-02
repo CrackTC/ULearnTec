@@ -1,6 +1,7 @@
 package zip.sora.ulearntec.ui.screen.main.course
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import zip.sora.ulearntec.R
 import zip.sora.ulearntec.domain.DownloadRepository
 import zip.sora.ulearntec.domain.LiveRepository
 import zip.sora.ulearntec.domain.LiveResourcesRepository
@@ -151,6 +153,16 @@ class ClassViewModel(
                 if (online) liveRepository.refresh(clazz) else liveRepository.getClassLives(clazz)
             if (lives.isError()) {
                 _uiState.update { ClassUiState.Error(it.clazz, it.lives, lives.error) }
+                return@launch
+            }
+
+            if (lives.data.isEmpty()) {
+                _uiState.update {
+                    ClassUiState.Error(
+                        it.clazz,
+                        lives.data
+                    ) { ctx -> ctx.getString(R.string.no_lives) }
+                }
                 return@launch
             }
 

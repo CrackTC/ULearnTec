@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -504,96 +505,99 @@ fun ClassScreen(
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()
         ) {
-            LazyColumn(state = scrollState) {
-                item(key = Int.MIN_VALUE, contentType = Int.MIN_VALUE) {
-                    Box {
-                        AsyncImage(
-                            model = clazz.cover,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 250.dp)
-                                .blur(4.dp)
-                                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                .drawWithContent {
-                                    val colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Black)
-                                    drawContent()
-                                    drawRect(
-                                        brush = Brush.verticalGradient(colors),
-                                        blendMode = BlendMode.DstOut
+            Column {
+                LazyColumn(state = scrollState, modifier = Modifier.wrapContentHeight()) {
+                    item(key = Int.MIN_VALUE, contentType = Int.MIN_VALUE) {
+                        Box {
+                            AsyncImage(
+                                model = clazz.cover,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 250.dp)
+                                    .blur(4.dp)
+                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                    .drawWithContent {
+                                        val colors =
+                                            listOf(Color.Black.copy(alpha = 0.8f), Color.Black)
+                                        drawContent()
+                                        drawRect(
+                                            brush = Brush.verticalGradient(colors),
+                                            blendMode = BlendMode.DstOut
+                                        )
+                                    }
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .let {
+                                        if (uiState !is ClassUiState.Error) it
+                                        else it
+                                            .fillParentMaxHeight()
+                                            .padding(bottom = innerPadding.calculateBottomPadding())
+                                    }
+                                    .padding(top = innerPadding.calculateTopPadding() + 16.dp)
+                            ) {
+                                val navAnimatedVisibilityScope =
+                                    LocalNavAnimatedVisibilityScope.current!!
+                                with(LocalSharedTransitionScope.current!!) {
+                                    ClassCardHorizontal(
+                                        clazz = clazz,
+                                        onClick = { showClassDetailSheet = true },
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp)
+                                            .height(114.dp)
+                                            .sharedElement(
+                                                rememberSharedContentState("grid-${clazz.id}"),
+                                                navAnimatedVisibilityScope
+                                            )
+                                            .sharedElement(
+                                                rememberSharedContentState("list-${clazz.id}"),
+                                                navAnimatedVisibilityScope
+                                            )
                                     )
                                 }
-                        )
-                        Column(
-                            modifier = Modifier
-                                .let {
-                                    if (uiState !is ClassUiState.Error) it
-                                    else it.fillParentMaxHeight()
+                                SelectionsChipRow(
+                                    selectedStatus = selectedStatus,
+                                    onStatusSelected = { selectedStatus = it },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                if (uiState is ClassUiState.Error) {
+                                    ErrorPane(
+                                        uiState.message(LocalContext.current),
+                                        modifier = Modifier.weight(1.0f)
+                                    )
                                 }
-                                .padding(innerPadding)
-                                .padding(horizontal = 16.dp)
-                                .padding(top = 16.dp)
-                        ) {
-                            val navAnimatedVisibilityScope =
-                                LocalNavAnimatedVisibilityScope.current!!
-                            with(LocalSharedTransitionScope.current!!) {
-                                ClassCardHorizontal(
-                                    clazz = clazz,
-                                    onClick = { showClassDetailSheet = true },
-                                    modifier = Modifier
-                                        .height(114.dp)
-                                        .sharedElement(
-                                            rememberSharedContentState("grid-${clazz.id}"),
-                                            navAnimatedVisibilityScope
-                                        )
-                                        .sharedElement(
-                                            rememberSharedContentState("list-${clazz.id}"),
-                                            navAnimatedVisibilityScope
-                                        )
-                                )
-                            }
-                            if (uiState is ClassUiState.Error) {
-                                ErrorPane(
-                                    uiState.message(LocalContext.current),
-                                    modifier = Modifier.fillMaxSize()
-                                )
                             }
                         }
                     }
+
+                    val filteredLives = lives.filter {
+                        (it.liveStatus == selectedStatus || selectedStatus == LiveStatus.NONE)
+                    }
+
+
+                    items(items = filteredLives, key = { it.id }) {
+                        LiveItem(
+                            onClick = { onLiveClicked(it) },
+                            onLongClick = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onShowLiveDetail(it)
+                            },
+                            live = it,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .animateItem()
+                        )
+                    }
+
+                    if (uiState !is ClassUiState.Error) {
+                        item(
+                            key = Int.MAX_VALUE,
+                            contentType = Int.MAX_VALUE
+                        ) { Spacer(modifier = Modifier.height(24.dp)) }
+                    }
                 }
-
-                item {
-                    SelectionsChipRow(
-                        selectedStatus = selectedStatus,
-                        onStatusSelected = { selectedStatus = it },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                val filteredLives = lives.filter {
-                    (it.liveStatus == selectedStatus || selectedStatus == LiveStatus.NONE)
-                }
-
-
-                items(items = filteredLives, key = { it.id }) {
-                    LiveItem(
-                        onClick = { onLiveClicked(it) },
-                        onLongClick = {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onShowLiveDetail(it)
-                        },
-                        live = it,
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .animateItem()
-                    )
-                }
-
-                item(
-                    key = Int.MAX_VALUE,
-                    contentType = Int.MAX_VALUE
-                ) { Spacer(modifier = Modifier.height(24.dp)) }
             }
         }
     }

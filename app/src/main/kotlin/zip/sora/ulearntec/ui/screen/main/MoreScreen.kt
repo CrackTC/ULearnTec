@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.outlined.Badge
@@ -55,10 +56,11 @@ import zip.sora.ulearntec.ui.theme.ULearnTecTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountScreen(
-    uiState: AccountUiState,
+fun MoreScreen(
+    uiState: MoreUiState,
     onRefresh: () -> Unit,
     onSettingsClicked: () -> Unit,
+    onAboutClicked: () -> Unit,
     onLogoutClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -112,10 +114,10 @@ fun AccountScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(text = stringResource(R.string.account)) }) }
+        topBar = { TopAppBar(title = { Text(text = stringResource(R.string.more)) }) }
     ) { innerPadding ->
         PullToRefreshBox(
-            isRefreshing = uiState is AccountUiState.Loading,
+            isRefreshing = uiState is MoreUiState.Loading,
             onRefresh = onRefresh,
             modifier = Modifier
                 .padding(innerPadding)
@@ -142,13 +144,19 @@ fun AccountScreen(
                         onClick = { showAccountInfoSheet = true },
                         icon = Icons.Filled.AccountBox
                     ) {
-                        Text(text = "Account Information")
+                        Text(text = stringResource(R.string.account_information))
                     }
                     ClickableListEntry(
                         onClick = onSettingsClicked,
                         icon = Icons.Filled.Settings
                     ) {
-                        Text(text = "Settings")
+                        Text(text = stringResource(R.string.settings))
+                    }
+                    ClickableListEntry(
+                        onClick = onAboutClicked,
+                        icon = Icons.Filled.Info
+                    ) {
+                        Text(text = stringResource(R.string.about))
                     }
                 }
                 Spacer(modifier = Modifier.weight(1.0f))
@@ -161,7 +169,7 @@ fun AccountScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Logout",
+                        text = stringResource(R.string.logout),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
@@ -203,12 +211,13 @@ private fun AccountCard(
 
 @Preview
 @Composable
-private fun AccountScreenPreview() {
+private fun MoreScreenPreview() {
     ULearnTecTheme {
-        AccountScreen(
-            uiState = AccountUiState.Success(user = mockUser),
+        MoreScreen(
+            uiState = MoreUiState.Success(user = mockUser),
             onRefresh = {},
             onSettingsClicked = {},
+            onAboutClicked = {},
             onLogoutClicked = {}
         )
     }

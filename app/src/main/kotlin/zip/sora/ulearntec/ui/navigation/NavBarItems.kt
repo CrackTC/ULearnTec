@@ -40,8 +40,8 @@ val mainNavBarItems = listOf(
         unselectedIcon = Icons.Outlined.Download,
     ),
     NavBarItemData(
-        route = NavGraph.Main.Account,
-        label = R.string.account,
+        route = NavGraph.Main.More,
+        label = R.string.more,
         selectedIcon = Icons.Filled.Person,
         unselectedIcon = Icons.Outlined.Person
     )

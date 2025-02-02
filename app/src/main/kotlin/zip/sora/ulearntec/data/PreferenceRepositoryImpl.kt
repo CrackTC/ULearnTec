@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
+import zip.sora.ulearntec.DEFAULT_MAX_PLAYER_CACHE_MB
 import zip.sora.ulearntec.R
 import zip.sora.ulearntec.domain.model.Credential
 import zip.sora.ulearntec.domain.ILearnResult
@@ -17,12 +18,16 @@ import java.time.Instant
 private const val PREFERENCES_NAME = "ilearn_preferences"
 
 private object PreferencesKeys {
+    // internal
     val LOGGED_IN = booleanPreferencesKey("logged_in")
     val USERNAME = stringPreferencesKey("username")
     val PASSWORD = stringPreferencesKey("password")
-    val REFRESH_INTERVAL_MILLIS = longPreferencesKey("refresh_interval_millis")
     val TEC_SESSION = stringPreferencesKey("tec_session")
     val RES_SESSION = stringPreferencesKey("res_session")
+
+    // tunable
+    val REFRESH_INTERVAL_MILLIS = longPreferencesKey("refresh_interval_millis")
+    val MAX_PLAYER_CACHE_MB = longPreferencesKey("max_player_cache_mb")
 }
 
 private val Context.dataStore by preferencesDataStore(name = PREFERENCES_NAME)
@@ -94,5 +99,12 @@ class PreferenceRepositoryImpl(context: Context) : PreferenceRepository {
             it.remove(PreferencesKeys.USERNAME)
             it.remove(PreferencesKeys.PASSWORD)
         }
+    }
+
+    override suspend fun getMaxPlayerCacheMb() =
+        dataStore.data.first()[PreferencesKeys.MAX_PLAYER_CACHE_MB] ?: DEFAULT_MAX_PLAYER_CACHE_MB
+
+    override suspend fun setMaxPlayerCacheMb(mb: Long) {
+        dataStore.edit { it[PreferencesKeys.MAX_PLAYER_CACHE_MB] = mb }
     }
 }

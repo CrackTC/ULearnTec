@@ -47,6 +47,7 @@ import zip.sora.ulearntec.domain.model.downloaded
 import zip.sora.ulearntec.domain.model.progress
 import zip.sora.ulearntec.domain.model.state
 import zip.sora.ulearntec.domain.model.total
+import zip.sora.ulearntec.ui.component.ErrorPane
 import zip.sora.ulearntec.ui.component.ListItemTag
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,25 +65,35 @@ fun DownloadScreen(
         topBar = { TopAppBar(title = { Text(text = stringResource(R.string.download)) }) },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        LazyColumn(
-            contentPadding = PaddingValues(vertical = 16.dp),
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            itemsIndexed(
-                items = uiState.downloads,
-                key = { _, item -> item.resources.liveId }
-            ) { index, download ->
-                val live = if (uiState is DownloadUiState.Loading) null else uiState.lives[index]
-                DownloadItem(
-                    onRemove = { onRemove(download) },
-                    onResume = { onResume(download) },
-                    onLongClick = { onLongClick(download) },
-                    onPause = { onPause(download) },
-                    onWatch = { if (live != null) onWatch(live) },
-                    download = download,
-                    live = live,
-                    modifier = Modifier.animateItem()
-                )
+        if (uiState.downloads.isEmpty()) {
+            ErrorPane(
+                stringResource(R.string.no_downloads_yet),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(vertical = 16.dp),
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                itemsIndexed(
+                    items = uiState.downloads,
+                    key = { _, item -> item.resources.liveId }
+                ) { index, download ->
+                    val live =
+                        if (uiState is DownloadUiState.Loading) null else uiState.lives[index]
+                    DownloadItem(
+                        onRemove = { onRemove(download) },
+                        onResume = { onResume(download) },
+                        onLongClick = { onLongClick(download) },
+                        onPause = { onPause(download) },
+                        onWatch = { if (live != null) onWatch(live) },
+                        download = download,
+                        live = live,
+                        modifier = Modifier.animateItem()
+                    )
+                }
             }
         }
     }

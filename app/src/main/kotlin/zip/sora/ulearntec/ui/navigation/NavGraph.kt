@@ -28,8 +28,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import com.mikepenz.aboutlibraries.ui.compose.m3.util.htmlReadyLicenseContent
 import kotlinx.serialization.Serializable
-import zip.sora.ulearntec.ui.navigation.main.addAccountScreen
+import zip.sora.ulearntec.ui.navigation.about.addAboutScreen
+import zip.sora.ulearntec.ui.navigation.about.addLicenseDetailScreen
+import zip.sora.ulearntec.ui.navigation.about.addLicenseScreen
+import zip.sora.ulearntec.ui.navigation.main.addMoreScreen
 import zip.sora.ulearntec.ui.navigation.main.addDownloadScreen
 import zip.sora.ulearntec.ui.navigation.main.addHistoryScreen
 import zip.sora.ulearntec.ui.navigation.main.course.addClassScreen
@@ -59,11 +63,20 @@ object NavGraph {
         object Download
 
         @Serializable
-        object Account
+        object More
     }
 
     @Serializable
     data class Player(val liveId: String)
+
+    @Serializable
+    data object About
+
+    @Serializable
+    data object License
+
+    @Serializable
+    data class LicenseDetail(val name: String, val website: String?, val license: String)
 }
 
 @Composable
@@ -109,8 +122,15 @@ fun NavGraph() {
     NavHost(
         navController = navController,
         startDestination = NavGraph.Main,
-        enterTransition = { fadeIn(animationSpec = tween(250)) },
-        exitTransition = { fadeOut(animationSpec = tween(250)) },
+        enterTransition = {
+            fadeIn(
+                animationSpec = tween(
+                    durationMillis = 125,
+                    delayMillis = 125
+                )
+            )
+        },
+        exitTransition = { fadeOut(animationSpec = tween(durationMillis = 125)) },
         route = NavGraph::class,
         modifier = Modifier.fillMaxSize()
     ) {
@@ -119,6 +139,30 @@ fun NavGraph() {
         )
         addPlayerScreen<NavGraph.Player>(
             onBackButtonClicked = navController::popBackStack
+        )
+        addAboutScreen<NavGraph.About>(
+            onBackButtonClicked = navController::popBackStack,
+            onLicenseClicked = {
+                navController.navigate(NavGraph.License)
+            }
+        )
+        addLicenseScreen<NavGraph.License>(
+            onBackButtonClicked = navController::popBackStack,
+            onLibraryClick = {
+                navController.navigate(
+                    NavGraph.LicenseDetail(
+                        it.name,
+                        it.website,
+                        it.licenses.firstOrNull()?.htmlReadyLicenseContent.orEmpty()
+                    )
+                )
+            }
+        )
+        addLicenseDetailScreen<NavGraph.LicenseDetail>(
+            onBackButtonClicked = navController::popBackStack,
+            nameSelector = { it.name },
+            websiteSelector = { it.website },
+            licenseSelector = { it.license }
         )
         composable<NavGraph.Main> {
             val mainNavController = rememberNavController()
@@ -129,8 +173,15 @@ fun NavGraph() {
                             navController = mainNavController,
                             startDestination = NavGraph.Main.Course,
                             route = NavGraph.Main::class,
-                            enterTransition = { fadeIn(animationSpec = tween(durationMillis = 250, delayMillis = 250)) },
-                            exitTransition = { fadeOut(animationSpec = tween(durationMillis = 250)) },
+                            enterTransition = {
+                                fadeIn(
+                                    animationSpec = tween(
+                                        durationMillis = 125,
+                                        delayMillis = 125
+                                    )
+                                )
+                            },
+                            exitTransition = { fadeOut(animationSpec = tween(durationMillis = 125)) },
                             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
                         ) {
                             navigation<NavGraph.Main.Course>(startDestination = NavGraph.Main.Course.Term) {
@@ -162,9 +213,15 @@ fun NavGraph() {
                                     navController.navigate(NavGraph.Player(it.id))
                                 }
                             )
-                            addAccountScreen<NavGraph.Main.Account>(
+                            addMoreScreen<NavGraph.Main.More>(
                                 onLogout = {
                                     navController.navigate(NavGraph.Login) { popUpTo(NavGraph) }
+                                },
+                                onAboutClicked = {
+                                    navController.navigate(NavGraph.About)
+                                },
+                                onSettingsClicked = {
+
                                 }
                             )
                         }

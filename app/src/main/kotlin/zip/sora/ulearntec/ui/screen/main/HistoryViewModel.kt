@@ -57,7 +57,7 @@ class HistoryViewModel(
         viewModelScope.launch {
             val lives = liveRepository.getAllLivesWithHistory()
             if (lives.isEmpty()) {
-                _uiState.update { prev -> Error(prev.allLivesWithHistory) { it.getString(R.string.no_history_yet) } }
+                _uiState.update { Error(emptyList()) { it.getString(R.string.no_history_yet) } }
                 return@launch
             }
 

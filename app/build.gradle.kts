@@ -2,7 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.devtools.ksp)
+    alias(libs.plugins.aboutlibraries.plugin)
     kotlin("plugin.serialization") version "2.1.0"
 }
 
@@ -15,9 +16,10 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
-
+        versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "REPO_URL", "\"https://github.com/CrackTC/ULearnTec\"")
     }
 
     buildTypes {
@@ -43,6 +45,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -76,6 +79,9 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.workmanager)
 
     implementation(libs.window)
+
+    implementation(libs.aboutlibraries.core)
+    implementation(libs.aboutlibraries.compose.m3)
 
     ksp(libs.androidx.room.compiler)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

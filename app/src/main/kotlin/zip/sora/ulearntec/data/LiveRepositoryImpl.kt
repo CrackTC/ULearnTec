@@ -51,8 +51,11 @@ class LiveRepositoryImpl(
 
         if (localLives.isEmpty() || preferenceRepository.isOutOfDate(localLives[0].live.lastUpdated)) {
             val remoteLives = refresh(clazz)
-            if (remoteLives is ILearnResult.Success) return remoteLives
+            if (remoteLives.isError()) {
+                if (localLives.isEmpty()) return ILearnResult.Error(remoteLives.error)
+            } else return remoteLives
         }
+
         return ILearnResult.Success(localLives.map { it.toLive() })
     }
 

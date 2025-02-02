@@ -27,9 +27,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import zip.sora.ulearntec.data.PlayerCacheRepositoryImpl
 import zip.sora.ulearntec.domain.DownloadRepository
 import zip.sora.ulearntec.domain.LiveRepository
 import zip.sora.ulearntec.domain.LiveResourcesRepository
+import zip.sora.ulearntec.domain.PlayerCacheRepository
 import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.LiveHistory
@@ -102,11 +104,11 @@ sealed interface PlayerUiState {
 
 class PlayerViewModel(
     savedStateHandle: SavedStateHandle,
-    private val cacheDataSourceFactory: DataSource.Factory,
     private val downloadDataSourceFactory: DataSource.Factory,
     private val liveRepository: LiveRepository,
     private val liveResourcesRepository: LiveResourcesRepository,
-    private val downloadRepository: DownloadRepository
+    private val downloadRepository: DownloadRepository,
+    private val playerCacheRepository: PlayerCacheRepository
 ) : ViewModel() {
 
     private val liveId =
@@ -215,12 +217,13 @@ class PlayerViewModel(
     }
 
     @OptIn(UnstableApi::class)
-    fun initializePlayers(context: Context) {
+    suspend fun initializePlayers(context: Context) {
         val state = _uiState.value
         if (state !is Pending) throw IllegalStateException()
 
         val dataSourceFactory =
-            if (state.download?.state == Download.STATE_COMPLETED) downloadDataSourceFactory else cacheDataSourceFactory
+            if (state.download?.state == Download.STATE_COMPLETED) downloadDataSourceFactory
+            else playerCacheRepository.getCacheFactory(context)
 
         var mediaClockPosition = 0L
         val audioPlayer =
