@@ -23,6 +23,7 @@ import org.koin.dsl.module
 import zip.sora.ulearntec.DATABASE_NAME
 import zip.sora.ulearntec.DOWNLOAD_CACHE_DIR_NAME
 import zip.sora.ulearntec.DOWNLOAD_NOTIFICATION_CHANNEL_ID
+import zip.sora.ulearntec.MainViewModel
 import zip.sora.ulearntec.data.ApiRepositoryImpl
 import zip.sora.ulearntec.data.ClassRepositoryImpl
 import zip.sora.ulearntec.data.DownloadRepositoryImpl
@@ -49,6 +50,7 @@ import zip.sora.ulearntec.ui.screen.main.DownloadViewModel
 import zip.sora.ulearntec.ui.screen.main.HistoryViewModel
 import zip.sora.ulearntec.ui.screen.main.course.ClassViewModel
 import zip.sora.ulearntec.ui.screen.main.course.TermViewModel
+import zip.sora.ulearntec.ui.screen.SettingsViewModel
 import java.io.File
 import java.util.concurrent.Executor
 
@@ -116,6 +118,7 @@ val defaultModule = module {
     singleOf(::DownloadRepositoryImpl) bind DownloadRepository::class
     singleOf(::PlayerCacheRepositoryImpl) bind PlayerCacheRepository::class
 
+    viewModelOf(::MainViewModel)
     viewModelOf(::LoginViewModel)
     viewModelOf(::TermViewModel)
     viewModelOf(::ClassViewModel)
@@ -123,4 +126,5 @@ val defaultModule = module {
     viewModelOf(::DownloadViewModel)
     viewModelOf(::HistoryViewModel)
     viewModelOf(::MoreViewModel)
+    viewModelOf(::SettingsViewModel)
 }

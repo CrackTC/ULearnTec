@@ -30,6 +30,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.mikepenz.aboutlibraries.ui.compose.m3.util.htmlReadyLicenseContent
 import kotlinx.serialization.Serializable
+import zip.sora.ulearntec.domain.Theme
 import zip.sora.ulearntec.ui.navigation.about.addAboutScreen
 import zip.sora.ulearntec.ui.navigation.about.addLicenseDetailScreen
 import zip.sora.ulearntec.ui.navigation.about.addLicenseScreen
@@ -68,6 +69,9 @@ object NavGraph {
 
     @Serializable
     data class Player(val liveId: String)
+
+    @Serializable
+    data object Settings
 
     @Serializable
     data object About
@@ -116,7 +120,7 @@ val LocalNavAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun NavGraph() {
+fun NavGraph(onThemeChanged: (Theme) -> Unit) {
     val navController = rememberNavController()
 
     NavHost(
@@ -139,6 +143,10 @@ fun NavGraph() {
         )
         addPlayerScreen<NavGraph.Player>(
             onBackButtonClicked = navController::popBackStack
+        )
+        addSettingsScreen<NavGraph.Settings>(
+            onBackButtonClicked = navController::popBackStack,
+            onThemeChanged = onThemeChanged
         )
         addAboutScreen<NavGraph.About>(
             onBackButtonClicked = navController::popBackStack,
@@ -221,7 +229,7 @@ fun NavGraph() {
                                     navController.navigate(NavGraph.About)
                                 },
                                 onSettingsClicked = {
-
+                                    navController.navigate(NavGraph.Settings)
                                 }
                             )
                         }

@@ -1,7 +1,6 @@
 package zip.sora.ulearntec.ui.screen.main.course
 
 import android.content.Context
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

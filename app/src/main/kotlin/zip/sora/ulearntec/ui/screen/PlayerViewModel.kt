@@ -27,11 +27,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import zip.sora.ulearntec.data.PlayerCacheRepositoryImpl
 import zip.sora.ulearntec.domain.DownloadRepository
 import zip.sora.ulearntec.domain.LiveRepository
 import zip.sora.ulearntec.domain.LiveResourcesRepository
 import zip.sora.ulearntec.domain.PlayerCacheRepository
+import zip.sora.ulearntec.domain.PlayerTheme
+import zip.sora.ulearntec.domain.PreferenceRepository
+import zip.sora.ulearntec.domain.SwipeSeekMode
 import zip.sora.ulearntec.domain.isError
 import zip.sora.ulearntec.domain.model.Live
 import zip.sora.ulearntec.domain.model.LiveHistory
@@ -43,10 +45,11 @@ import zip.sora.ulearntec.playback.ClockSyncedVideoRendererFactory
 import zip.sora.ulearntec.ui.navigation.NavGraph
 import zip.sora.ulearntec.ui.screen.PlayerUiState.Error
 import zip.sora.ulearntec.ui.screen.PlayerUiState.Loading
-import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.Pending
-import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.PlayerCreated
-import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.PlayerCreated.InitBuffering
-import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.PlayerCreated.Playing
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.Pending
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.PlayerCreated
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.PlayerCreated.InitBuffering
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.PlayerCreated.Playing
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoading
 import java.time.Instant
 
 sealed interface PlayerUiState {
@@ -56,43 +59,85 @@ sealed interface PlayerUiState {
         override val live: Live?,
     ) : PlayerUiState
 
-    sealed interface ResourceKnown : PlayerUiState {
-        val liveResources: LiveResources
-        val download: ResourceDownload?
+    sealed interface PreferenceLoaded : PlayerUiState {
+        val theme: PlayerTheme
+        val swipeSeekMode: SwipeSeekMode
+        val swipeSeekFixedMillis: Long
+        val swipeSeekPercent: Float
+        val swipeVolumePercent: Float
+        val swipeBrightnessPercent: Float
+        val longPressSpeed: Float
 
-        data class Pending(
-            override val liveResources: LiveResources,
-            override val download: ResourceDownload?,
+        data class ResourceLoading(
             override val live: Live,
-        ) : ResourceKnown
+            override val theme: PlayerTheme,
+            override val swipeSeekMode: SwipeSeekMode,
+            override val swipeSeekFixedMillis: Long,
+            override val swipeSeekPercent: Float,
+            override val swipeVolumePercent: Float,
+            override val swipeBrightnessPercent: Float,
+            override val longPressSpeed: Float
+        ) : PreferenceLoaded
 
-        sealed interface PlayerCreated : ResourceKnown {
-            val videoPlayers: List<Player>
-            val audioPlayer: Player
-            val requestedSpeed: Float
+        sealed interface ResourceLoaded : PreferenceLoaded {
+            val liveResources: LiveResources
+            val download: ResourceDownload?
 
-            data class InitBuffering(
+            data class Pending(
                 override val liveResources: LiveResources,
                 override val download: ResourceDownload?,
-                override val videoPlayers: List<Player>,
-                override val audioPlayer: Player,
-                override val requestedSpeed: Float,
-                override val live: Live
-            ) : PlayerCreated
-
-            data class Playing(
-                override val liveResources: LiveResources,
-                override val download: ResourceDownload?,
-                override val videoPlayers: List<Player>,
-                val aspectRatios: List<Float>,
-                override val audioPlayer: Player,
-                override val requestedSpeed: Float,
-                val isPlaying: Boolean,
-                val cues: ImmutableList<Cue>,
-                val currentMillis: Long,
-                val totalMillis: Long,
+                override val theme: PlayerTheme,
+                override val swipeSeekMode: SwipeSeekMode,
+                override val swipeSeekFixedMillis: Long,
+                override val swipeSeekPercent: Float,
+                override val swipeVolumePercent: Float,
+                override val swipeBrightnessPercent: Float,
+                override val longPressSpeed: Float,
                 override val live: Live,
-            ) : PlayerCreated
+            ) : ResourceLoaded
+
+            sealed interface PlayerCreated : ResourceLoaded {
+                val videoPlayers: List<Player>
+                val audioPlayer: Player
+                val requestedSpeed: Float
+
+                data class InitBuffering(
+                    override val liveResources: LiveResources,
+                    override val download: ResourceDownload?,
+                    override val theme: PlayerTheme,
+                    override val swipeSeekMode: SwipeSeekMode,
+                    override val swipeSeekFixedMillis: Long,
+                    override val swipeSeekPercent: Float,
+                    override val swipeVolumePercent: Float,
+                    override val swipeBrightnessPercent: Float,
+                    override val longPressSpeed: Float,
+                    override val videoPlayers: List<Player>,
+                    override val audioPlayer: Player,
+                    override val requestedSpeed: Float,
+                    override val live: Live,
+                ) : PlayerCreated
+
+                data class Playing(
+                    override val liveResources: LiveResources,
+                    override val download: ResourceDownload?,
+                    override val theme: PlayerTheme,
+                    override val swipeSeekMode: SwipeSeekMode,
+                    override val swipeSeekFixedMillis: Long,
+                    override val swipeSeekPercent: Float,
+                    override val swipeVolumePercent: Float,
+                    override val swipeBrightnessPercent: Float,
+                    override val longPressSpeed: Float,
+                    override val videoPlayers: List<Player>,
+                    val aspectRatios: List<Float>,
+                    override val audioPlayer: Player,
+                    override val requestedSpeed: Float,
+                    val isPlaying: Boolean,
+                    val cues: ImmutableList<Cue>,
+                    val currentMillis: Long,
+                    val totalMillis: Long,
+                    override val live: Live,
+                ) : PlayerCreated
+            }
         }
     }
 
@@ -108,7 +153,8 @@ class PlayerViewModel(
     private val liveRepository: LiveRepository,
     private val liveResourcesRepository: LiveResourcesRepository,
     private val downloadRepository: DownloadRepository,
-    private val playerCacheRepository: PlayerCacheRepository
+    private val playerCacheRepository: PlayerCacheRepository,
+    private val preferenceRepository: PreferenceRepository
 ) : ViewModel() {
 
     private val liveId =
@@ -196,23 +242,74 @@ class PlayerViewModel(
 
     private fun initializeResources() {
         viewModelScope.launch {
+            val theme = preferenceRepository.getPlayerTheme()
+            val swipeSeekMode = preferenceRepository.getSwipeSeekMode()
+            val swipeSeekFixedMillis = preferenceRepository.getSwipeSeekFixedMillis()
+            val swipeSeekPercent = preferenceRepository.getSwipeSeekPercent()
+            val swipeVolumePercent = preferenceRepository.getSwipeVolumePercent()
+            val swipeBrightnessPercent = preferenceRepository.getSwipeBrightnessPercent()
+            val longPressSpeed = preferenceRepository.getLongPressSpeed()
+
             val live = liveRepository.getLive(liveId)
             if (live.isError()) {
                 _uiState.update { Error(live.error, null) }
                 return@launch
             }
+
+            _uiState.update {
+                ResourceLoading(
+                    live.data,
+                    theme,
+                    swipeSeekMode,
+                    swipeSeekFixedMillis,
+                    swipeSeekPercent,
+                    swipeVolumePercent,
+                    swipeBrightnessPercent,
+                    longPressSpeed
+                )
+            }
+
             val resources = liveResourcesRepository.getLiveResources(live.data)
             if (resources.isError()) {
-                _uiState.update { Error(resources.error, live.data) }
+                _uiState.update { Error(resources.error, it.live) }
                 return@launch
             }
+
             val download = downloadRepository.getDownload(resources.data)
             if (download.isError()) {
                 // no download found, pass null
-                _uiState.update { Pending(resources.data, null, live.data) }
+                _uiState.update {
+                    it as ResourceLoading
+                    Pending(
+                        resources.data,
+                        null,
+                        it.theme,
+                        it.swipeSeekMode,
+                        it.swipeSeekFixedMillis,
+                        it.swipeSeekPercent,
+                        it.swipeVolumePercent,
+                        it.swipeBrightnessPercent,
+                        it.longPressSpeed,
+                        it.live
+                    )
+                }
                 return@launch
             }
-            _uiState.update { Pending(resources.data, download.data, live.data) }
+            _uiState.update {
+                it as ResourceLoading
+                Pending(
+                    resources.data,
+                    download.data,
+                    it.theme,
+                    it.swipeSeekMode,
+                    it.swipeSeekFixedMillis,
+                    it.swipeSeekPercent,
+                    it.swipeVolumePercent,
+                    it.swipeBrightnessPercent,
+                    it.longPressSpeed,
+                    it.live
+                )
+            }
         }
     }
 
@@ -277,6 +374,13 @@ class PlayerViewModel(
             InitBuffering(
                 state.liveResources,
                 state.download,
+                state.theme,
+                state.swipeSeekMode,
+                state.swipeSeekFixedMillis,
+                state.swipeSeekPercent,
+                state.swipeVolumePercent,
+                state.swipeBrightnessPercent,
+                state.longPressSpeed,
                 players,
                 audioPlayer,
                 1.0f,
@@ -375,37 +479,43 @@ class PlayerViewModel(
             if (playbackState != Player.STATE_READY) return
 
             val count = ++readyCount
-            _uiState.update { prevState ->
-                if (prevState is InitBuffering && count > prevState.videoPlayers.size) {
-                    prevState.audioPlayer.play()
-                    prevState.videoPlayers.forEach { it.play() }
+            _uiState.update { prev ->
+                if (prev is InitBuffering && count > prev.videoPlayers.size) {
+                    prev.audioPlayer.play()
+                    prev.videoPlayers.forEach { it.play() }
                     Playing(
-                        prevState.liveResources,
-                        prevState.download,
-                        prevState.videoPlayers,
-                        prevState.videoPlayers.map {
+                        prev.liveResources,
+                        prev.download,
+                        prev.theme,
+                        prev.swipeSeekMode,
+                        prev.swipeSeekFixedMillis,
+                        prev.swipeSeekPercent,
+                        prev.swipeVolumePercent,
+                        prev.swipeBrightnessPercent,
+                        prev.longPressSpeed,
+                        prev.videoPlayers,
+                        prev.videoPlayers.map {
                             it.videoSize.let { size ->
                                 if (size.height > 0)
                                     size.width.toFloat() / size.height * size.pixelWidthHeightRatio
                                 else 16.0f / 9.0f
                             }
                         },
-                        prevState.audioPlayer,
-                        prevState.requestedSpeed,
+                        prev.audioPlayer,
+                        prev.requestedSpeed,
                         true,
                         ImmutableList.of(),
-                        prevState.audioPlayer.currentPosition,
-                        prevState.audioPlayer.duration,
-                        prevState.live
+                        prev.audioPlayer.currentPosition,
+                        prev.audioPlayer.duration,
+                        prev.live
                     )
-                } else prevState
+                } else prev
             }
         }
     }
 
     override fun onCleared() {
-        val state = _uiState.value
-        (state as? PlayerCreated)?.apply {
+        (_uiState.value as? PlayerCreated)?.apply {
             videoPlayers.forEach { it.release() }
             audioPlayer.release()
         }

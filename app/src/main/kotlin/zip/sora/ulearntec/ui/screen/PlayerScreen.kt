@@ -100,14 +100,15 @@ import androidx.window.layout.WindowMetricsCalculator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zip.sora.ulearntec.R
+import zip.sora.ulearntec.domain.SwipeSeekMode
 import zip.sora.ulearntec.ui.UpdateViewConfiguration
 import zip.sora.ulearntec.ui.component.ErrorPane
 import zip.sora.ulearntec.ui.component.VerticalSlider
 import zip.sora.ulearntec.ui.exclusiveDetectDoubleTapGesture
 import zip.sora.ulearntec.ui.exclusiveDetectTransformGestures
-import zip.sora.ulearntec.ui.screen.PlayerUiState.*
-import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.PlayerCreated
-import zip.sora.ulearntec.ui.screen.PlayerUiState.ResourceKnown.PlayerCreated.Playing
+import zip.sora.ulearntec.ui.screen.PlayerUiState.Error
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.PlayerCreated
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.PlayerCreated.Playing
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -243,9 +244,7 @@ fun PlayerScreen(
                         if (!lock) {
                             detectHorizontalDragGestures(
                                 onDragStart = {
-                                    seekMillis =
-                                        (updatedUiState as? Playing)?.currentMillis
-                                            ?: 0L
+                                    seekMillis = (updatedUiState as? Playing)?.currentMillis ?: 0L
                                     isSeeking = true
                                 },
                                 onDragEnd = {
@@ -253,13 +252,17 @@ fun PlayerScreen(
                                     onSeek(seekMillis)
                                 },
                             ) { _, amount ->
-                                val fullDragMillis = 60_000L
+                                val state = updatedUiState as? Playing
+                                    ?: return@detectHorizontalDragGestures
+                                val fullDragMillis = state.let {
+                                    when (it.swipeSeekMode) {
+                                        SwipeSeekMode.FIXED -> it.swipeSeekFixedMillis
+                                        SwipeSeekMode.PERCENT -> (it.swipeSeekPercent * state.totalMillis).toLong()
+                                    }
+                                }
                                 val delta = (amount / windowMetrics.bounds.width()) * fullDragMillis
-                                seekMillis = (seekMillis + delta.toLong()).coerceIn(
-                                    0L,
-                                    (updatedUiState as? Playing)?.totalMillis
-                                        ?: 0L
-                                )
+                                seekMillis =
+                                    (seekMillis + delta.toLong()).coerceIn(0L, state.totalMillis)
                             }
                         }
                     }
@@ -276,10 +279,11 @@ fun PlayerScreen(
                                 }
                             },
                             onLongPress = {
+                                val state = updatedUiState as? PlayerUiState.PreferenceLoaded ?: return@detectTapGestures
                                 if (!lock) {
                                     speedingUp = true
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onSpeed(4.0f)
+                                    onSpeed(state.longPressSpeed)
                                 }
                             },
                             onDoubleTap = {
@@ -300,7 +304,10 @@ fun PlayerScreen(
                                 onDragStart = { showBrightnessBar = true },
                                 onDragEnd = { showBrightnessBar = false }
                             ) { _, amount ->
-                                onBrightnessDelta(-amount / windowMetrics.bounds.height())
+                                val state = updatedUiState as? PlayerUiState.PreferenceLoaded
+                                    ?: return@detectVerticalDragGestures
+
+                                onBrightnessDelta(-amount / windowMetrics.bounds.height() * state.swipeBrightnessPercent)
                             }
                         }
                     }
@@ -314,7 +321,9 @@ fun PlayerScreen(
                                 onDragStart = { showVolumeBar = true },
                                 onDragEnd = { showVolumeBar = false }
                             ) { _, amount ->
-                                onVolumeDelta(-amount / windowMetrics.bounds.height())
+                                val state = updatedUiState as? PlayerUiState.PreferenceLoaded
+                                    ?: return@detectVerticalDragGestures
+                                onVolumeDelta(-amount / windowMetrics.bounds.height() * state.swipeVolumePercent)
                             }
                         }
                     }
