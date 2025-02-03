@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ULearnTec</string>
+    <string name="app_name" translatable="false">ULearnTec</string>
     <string name="login">Login</string>
     <string name="password">Password</string>
     <string name="username">Username</string>
