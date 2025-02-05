@@ -300,7 +300,10 @@ fun <T> SelectionSettingEntry(
                     items(items = entries) { entry ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                onEntrySelected(entry)
+                                showDialog = false
+                            }
                         ) {
                             RadioButton(
                                 selected = entry == currentEntry,
