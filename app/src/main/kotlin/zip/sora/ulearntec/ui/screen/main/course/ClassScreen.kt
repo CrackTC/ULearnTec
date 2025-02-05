@@ -565,7 +565,7 @@ fun ClassScreen(
                                 if (uiState is ClassUiState.Error) {
                                     ErrorPane(
                                         uiState.message(LocalContext.current),
-                                        modifier = Modifier.weight(1.0f)
+                                        modifier = Modifier.weight(1.0f).fillMaxWidth()
                                     )
                                 }
                             }
