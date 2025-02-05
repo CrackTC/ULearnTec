@@ -29,15 +29,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: MainViewModel = koinViewModel()
             val uiState by viewModel.uiState.collectAsState()
-            ULearnTecTheme(
-                darkTheme = when {
-                    uiState is MainUiState.Success -> when ((uiState as MainUiState.Success).theme) {
-                        Theme.SYSTEM -> isSystemInDarkTheme()
-                        Theme.LIGHT -> false
-                        Theme.DARK -> true
-                    }
+            val theme = (uiState as? MainUiState.Success)?.theme ?: return@setContent
 
-                    else -> isSystemInDarkTheme()
+            ULearnTecTheme(
+                darkTheme = when (theme) {
+                    Theme.SYSTEM -> isSystemInDarkTheme()
+                    Theme.LIGHT -> false
+                    Theme.DARK -> true
                 }
             ) {
                 // add background to avoid white flicker on NavHost initialization
