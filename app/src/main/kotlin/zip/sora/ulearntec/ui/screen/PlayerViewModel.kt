@@ -52,6 +52,15 @@ import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoade
 import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoading
 import java.time.Instant
 
+data class GesturePreferences(
+    val swipeSeekMode: SwipeSeekMode,
+    val swipeSeekFixedMillis: Long,
+    val swipeSeekPercent: Float,
+    val swipeVolumePercent: Float,
+    val swipeBrightnessPercent: Float,
+    val longPressSpeed: Float
+)
+
 sealed interface PlayerUiState {
     val live: Live?
 
@@ -61,22 +70,12 @@ sealed interface PlayerUiState {
 
     sealed interface PreferenceLoaded : PlayerUiState {
         val theme: PlayerTheme
-        val swipeSeekMode: SwipeSeekMode
-        val swipeSeekFixedMillis: Long
-        val swipeSeekPercent: Float
-        val swipeVolumePercent: Float
-        val swipeBrightnessPercent: Float
-        val longPressSpeed: Float
+        val gesturePreferences: GesturePreferences
 
         data class ResourceLoading(
             override val live: Live,
             override val theme: PlayerTheme,
-            override val swipeSeekMode: SwipeSeekMode,
-            override val swipeSeekFixedMillis: Long,
-            override val swipeSeekPercent: Float,
-            override val swipeVolumePercent: Float,
-            override val swipeBrightnessPercent: Float,
-            override val longPressSpeed: Float
+            override val gesturePreferences: GesturePreferences
         ) : PreferenceLoaded
 
         sealed interface ResourceLoaded : PreferenceLoaded {
@@ -87,12 +86,7 @@ sealed interface PlayerUiState {
                 override val liveResources: LiveResources,
                 override val download: ResourceDownload?,
                 override val theme: PlayerTheme,
-                override val swipeSeekMode: SwipeSeekMode,
-                override val swipeSeekFixedMillis: Long,
-                override val swipeSeekPercent: Float,
-                override val swipeVolumePercent: Float,
-                override val swipeBrightnessPercent: Float,
-                override val longPressSpeed: Float,
+                override val gesturePreferences: GesturePreferences,
                 override val live: Live,
             ) : ResourceLoaded
 
@@ -105,12 +99,7 @@ sealed interface PlayerUiState {
                     override val liveResources: LiveResources,
                     override val download: ResourceDownload?,
                     override val theme: PlayerTheme,
-                    override val swipeSeekMode: SwipeSeekMode,
-                    override val swipeSeekFixedMillis: Long,
-                    override val swipeSeekPercent: Float,
-                    override val swipeVolumePercent: Float,
-                    override val swipeBrightnessPercent: Float,
-                    override val longPressSpeed: Float,
+                    override val gesturePreferences: GesturePreferences,
                     override val videoPlayers: List<Player>,
                     override val audioPlayer: Player,
                     override val requestedSpeed: Float,
@@ -121,12 +110,7 @@ sealed interface PlayerUiState {
                     override val liveResources: LiveResources,
                     override val download: ResourceDownload?,
                     override val theme: PlayerTheme,
-                    override val swipeSeekMode: SwipeSeekMode,
-                    override val swipeSeekFixedMillis: Long,
-                    override val swipeSeekPercent: Float,
-                    override val swipeVolumePercent: Float,
-                    override val swipeBrightnessPercent: Float,
-                    override val longPressSpeed: Float,
+                    override val gesturePreferences: GesturePreferences,
                     override val videoPlayers: List<Player>,
                     val aspectRatios: List<Float>,
                     override val audioPlayer: Player,
@@ -243,12 +227,16 @@ class PlayerViewModel(
     private fun initializeResources() {
         viewModelScope.launch {
             val theme = preferenceRepository.getPlayerTheme()
-            val swipeSeekMode = preferenceRepository.getSwipeSeekMode()
-            val swipeSeekFixedMillis = preferenceRepository.getSwipeSeekFixedMillis()
-            val swipeSeekPercent = preferenceRepository.getSwipeSeekPercent()
-            val swipeVolumePercent = preferenceRepository.getSwipeVolumePercent()
-            val swipeBrightnessPercent = preferenceRepository.getSwipeBrightnessPercent()
-            val longPressSpeed = preferenceRepository.getLongPressSpeed()
+            val gesturePreferences = preferenceRepository.let {
+                GesturePreferences(
+                    it.getSwipeSeekMode(),
+                    it.getSwipeSeekFixedMillis(),
+                    it.getSwipeSeekPercent(),
+                    it.getSwipeVolumePercent(),
+                    it.getSwipeBrightnessPercent(),
+                    it.getLongPressSpeed()
+                )
+            }
 
             val live = liveRepository.getLive(liveId)
             if (live.isError()) {
@@ -260,12 +248,7 @@ class PlayerViewModel(
                 ResourceLoading(
                     live.data,
                     theme,
-                    swipeSeekMode,
-                    swipeSeekFixedMillis,
-                    swipeSeekPercent,
-                    swipeVolumePercent,
-                    swipeBrightnessPercent,
-                    longPressSpeed
+                    gesturePreferences
                 )
             }
 
@@ -284,12 +267,7 @@ class PlayerViewModel(
                         resources.data,
                         null,
                         it.theme,
-                        it.swipeSeekMode,
-                        it.swipeSeekFixedMillis,
-                        it.swipeSeekPercent,
-                        it.swipeVolumePercent,
-                        it.swipeBrightnessPercent,
-                        it.longPressSpeed,
+                        it.gesturePreferences,
                         it.live
                     )
                 }
@@ -301,12 +279,7 @@ class PlayerViewModel(
                     resources.data,
                     download.data,
                     it.theme,
-                    it.swipeSeekMode,
-                    it.swipeSeekFixedMillis,
-                    it.swipeSeekPercent,
-                    it.swipeVolumePercent,
-                    it.swipeBrightnessPercent,
-                    it.longPressSpeed,
+                    it.gesturePreferences,
                     it.live
                 )
             }
@@ -375,12 +348,7 @@ class PlayerViewModel(
                 state.liveResources,
                 state.download,
                 state.theme,
-                state.swipeSeekMode,
-                state.swipeSeekFixedMillis,
-                state.swipeSeekPercent,
-                state.swipeVolumePercent,
-                state.swipeBrightnessPercent,
-                state.longPressSpeed,
+                state.gesturePreferences,
                 players,
                 audioPlayer,
                 1.0f,
@@ -487,12 +455,7 @@ class PlayerViewModel(
                         prev.liveResources,
                         prev.download,
                         prev.theme,
-                        prev.swipeSeekMode,
-                        prev.swipeSeekFixedMillis,
-                        prev.swipeSeekPercent,
-                        prev.swipeVolumePercent,
-                        prev.swipeBrightnessPercent,
-                        prev.longPressSpeed,
+                        prev.gesturePreferences,
                         prev.videoPlayers,
                         prev.videoPlayers.map {
                             it.videoSize.let { size ->

@@ -62,9 +62,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -96,7 +98,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.SubtitleView
-import androidx.window.layout.WindowMetricsCalculator
+import androidx.window.layout.WindowMetrics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zip.sora.ulearntec.R
@@ -107,6 +109,7 @@ import zip.sora.ulearntec.ui.component.VerticalSlider
 import zip.sora.ulearntec.ui.exclusiveDetectDoubleTapGesture
 import zip.sora.ulearntec.ui.exclusiveDetectTransformGestures
 import zip.sora.ulearntec.ui.screen.PlayerUiState.Error
+import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded
 import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.PlayerCreated
 import zip.sora.ulearntec.ui.screen.PlayerUiState.PreferenceLoaded.ResourceLoaded.PlayerCreated.Playing
 
@@ -199,6 +202,7 @@ fun SharedTransitionScope.PipVideo(
 @Composable
 fun PlayerScreen(
     uiState: PlayerUiState,
+    windowMetrics: WindowMetrics,
     currentVolumePercent: Float,
     currentBrightnessPercent: Float,
     onBackButtonClicked: () -> Unit,
@@ -213,8 +217,6 @@ fun PlayerScreen(
     onBrightnessDelta: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val windowMetrics =
-        WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(LocalContext.current)
     val haptic = LocalHapticFeedback.current
 
     var lock by rememberSaveable { mutableStateOf(false) }
@@ -228,372 +230,384 @@ fun PlayerScreen(
     var seekMillis by remember { mutableLongStateOf(0L) }
     var showingModalMenu by rememberSaveable { mutableStateOf(false) }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Gesture overlay
-        UpdateViewConfiguration(doubleTapTimeoutMillis = 150) {
-            val updatedUiState by rememberUpdatedState(uiState)
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(WindowInsets.safeGestures.asPaddingValues())
-                    .pointerInput(lock) {
-                        if (!lock) {
-                            detectHorizontalDragGestures(
-                                onDragStart = {
-                                    seekMillis = (updatedUiState as? Playing)?.currentMillis ?: 0L
-                                    isSeeking = true
-                                },
-                                onDragEnd = {
-                                    isSeeking = false
-                                    onSeek(seekMillis)
-                                },
-                            ) { _, amount ->
-                                val state = updatedUiState as? Playing
-                                    ?: return@detectHorizontalDragGestures
-                                val fullDragMillis = state.let {
-                                    when (it.swipeSeekMode) {
-                                        SwipeSeekMode.FIXED -> it.swipeSeekFixedMillis
-                                        SwipeSeekMode.PERCENT -> (it.swipeSeekPercent * state.totalMillis).toLong()
+    val playing by rememberUpdatedState(uiState as? Playing)
+    val currentMillis by remember { derivedStateOf { playing?.currentMillis ?: 0L } }
+    val totalMillis by remember { derivedStateOf { playing?.totalMillis ?: 0L } }
+    val isPlaying by remember { derivedStateOf { playing?.isPlaying } }
+
+    val preferenceLoaded by rememberUpdatedState(uiState as? PreferenceLoaded)
+    val gesturePreferences by remember { derivedStateOf { preferenceLoaded?.gesturePreferences } }
+
+    // for LocalContentColor
+    Surface {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // Gesture overlay
+            UpdateViewConfiguration(doubleTapTimeoutMillis = 150) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(WindowInsets.safeGestures.asPaddingValues())
+                        .pointerInput(lock) {
+                            if (!lock) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = {
+                                        seekMillis = currentMillis
+                                        isSeeking = true
+                                    },
+                                    onDragEnd = {
+                                        isSeeking = false
+                                        onSeek(seekMillis)
+                                    },
+                                ) { _, amount ->
+                                    val fullDragMillis = gesturePreferences?.let {
+                                        when (it.swipeSeekMode) {
+                                            SwipeSeekMode.FIXED -> it.swipeSeekFixedMillis
+                                            SwipeSeekMode.PERCENT -> (it.swipeSeekPercent * totalMillis).toLong()
+                                        }
+                                    } ?: return@detectHorizontalDragGestures
+                                    val delta =
+                                        (amount / windowMetrics.bounds.width()) * fullDragMillis
+                                    seekMillis =
+                                        (seekMillis + delta.toLong()).coerceIn(0L, totalMillis)
+                                }
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { showOverlay = true },
+                                onPress = {
+                                    if (!lock) {
+                                        awaitRelease()
+                                        if (speedingUp) {
+                                            speedingUp = false
+                                            onSpeed(1.0f)
+                                        }
                                     }
-                                }
-                                val delta = (amount / windowMetrics.bounds.width()) * fullDragMillis
-                                seekMillis =
-                                    (seekMillis + delta.toLong()).coerceIn(0L, state.totalMillis)
-                            }
-                        }
-                    }
-                    .pointerInput((uiState as? Playing)?.isPlaying) {
-                        detectTapGestures(
-                            onTap = { showOverlay = true },
-                            onPress = {
-                                if (!lock) {
-                                    awaitRelease()
-                                    if (speedingUp) {
-                                        speedingUp = false
-                                        onSpeed(1.0f)
+                                },
+                                onLongPress = {
+                                    if (!lock) {
+                                        speedingUp = true
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onSpeed(
+                                            gesturePreferences?.longPressSpeed
+                                                ?: return@detectTapGestures
+                                        )
                                     }
-                                }
-                            },
-                            onLongPress = {
-                                val state = updatedUiState as? PlayerUiState.PreferenceLoaded ?: return@detectTapGestures
-                                if (!lock) {
-                                    speedingUp = true
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onSpeed(state.longPressSpeed)
-                                }
-                            },
-                            onDoubleTap = {
-                                if (uiState is Playing && !lock) {
-                                    if (uiState.isPlaying) onPause()
-                                    else onPlay()
-                                }
-                            },
-                        )
-                    },
-            ) {
-                Box(modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1.0f)
-                    .pointerInput(windowMetrics.bounds.height(), lock) {
-                        if (!lock) {
-                            detectVerticalDragGestures(
-                                onDragStart = { showBrightnessBar = true },
-                                onDragEnd = { showBrightnessBar = false }
-                            ) { _, amount ->
-                                val state = updatedUiState as? PlayerUiState.PreferenceLoaded
-                                    ?: return@detectVerticalDragGestures
-
-                                onBrightnessDelta(-amount / windowMetrics.bounds.height() * state.swipeBrightnessPercent)
-                            }
-                        }
-                    }
-                )
-                Box(modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1.0f)
-                    .pointerInput(windowMetrics.bounds.height(), lock) {
-                        if (!lock) {
-                            detectVerticalDragGestures(
-                                onDragStart = { showVolumeBar = true },
-                                onDragEnd = { showVolumeBar = false }
-                            ) { _, amount ->
-                                val state = updatedUiState as? PlayerUiState.PreferenceLoaded
-                                    ?: return@detectVerticalDragGestures
-                                onVolumeDelta(-amount / windowMetrics.bounds.height() * state.swipeVolumePercent)
-                            }
-                        }
-                    }
-                )
-            }
-        }
-
-        when (uiState) {
-            is Playing -> {
-                var heightDp by rememberSaveable { mutableFloatStateOf(192.0f) }
-                val xPx = remember { Animatable(0.0f) }
-                val yPx = remember { Animatable(0.0f) }
-
-                SharedTransitionLayout {
-                    AnimatedContent(currentPipIndex) { pipIndex ->
-                        NormalVideoRow(
-                            uiState.videoPlayers,
-                            uiState.aspectRatios,
-                            pipIndex,
-                            this
-                        )
-
-                        if (pipIndex >= 0) {
-                            val player = uiState.videoPlayers[pipIndex]
-                            val aspectRatio = uiState.aspectRatios[pipIndex]
-
-                            val coroutineScope = rememberCoroutineScope()
-
-                            PipVideo(
-                                player = player,
-                                aspectRatio = aspectRatio,
-                                offset = { IntOffset(xPx.value.toInt(), yPx.value.toInt()) },
-                                height = heightDp.dp,
-                                animatedVisibilityScope = this,
-                                pointInputKey = windowMetrics,
-                                lock = lock,
+                                },
                                 onDoubleTap = {
+                                    if (!lock) {
+                                        if (isPlaying == true) onPause()
+                                        else onPlay()
+                                    }
+                                },
+                            )
+                        },
+                ) {
+                    Box(modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1.0f)
+                        .pointerInput(windowMetrics.bounds.height(), lock) {
+                            if (!lock) {
+                                detectVerticalDragGestures(
+                                    onDragStart = { showBrightnessBar = true },
+                                    onDragEnd = { showBrightnessBar = false }
+                                ) { _, amount ->
+                                    onBrightnessDelta(
+                                        -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeBrightnessPercent
+                                            ?: return@detectVerticalDragGestures)
+                                    )
+                                }
+                            }
+                        }
+                    )
+                    Box(modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1.0f)
+                        .pointerInput(windowMetrics.bounds.height(), lock) {
+                            if (!lock) {
+                                detectVerticalDragGestures(
+                                    onDragStart = { showVolumeBar = true },
+                                    onDragEnd = { showVolumeBar = false }
+                                ) { _, amount ->
+                                    onVolumeDelta(
+                                        -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeVolumePercent
+                                            ?: return@detectVerticalDragGestures)
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+
+            when (uiState) {
+                is Playing -> {
+                    var heightDp by rememberSaveable { mutableFloatStateOf(192.0f) }
+                    val xPx = remember { Animatable(0.0f) }
+                    val yPx = remember { Animatable(0.0f) }
+
+                    SharedTransitionLayout {
+                        AnimatedContent(currentPipIndex) { pipIndex ->
+                            NormalVideoRow(
+                                uiState.videoPlayers,
+                                uiState.aspectRatios,
+                                pipIndex,
+                                this
+                            )
+
+                            if (pipIndex >= 0) {
+                                val player = uiState.videoPlayers[pipIndex]
+                                val aspectRatio = uiState.aspectRatios[pipIndex]
+
+                                val coroutineScope = rememberCoroutineScope()
+
+                                PipVideo(
+                                    player = player,
+                                    aspectRatio = aspectRatio,
+                                    offset = { IntOffset(xPx.value.toInt(), yPx.value.toInt()) },
+                                    height = heightDp.dp,
+                                    animatedVisibilityScope = this,
+                                    pointInputKey = windowMetrics,
+                                    lock = lock,
+                                    onDoubleTap = {
+                                        currentPipIndex =
+                                            if (currentPipIndex + 1 >= uiState.videoPlayers.size) -1
+                                            else currentPipIndex + 1
+                                    },
+                                    onZoom = {
+                                        heightDp = (heightDp * it).coerceIn(72.0f, 256.0f)
+                                    },
+                                    onDrag = {
+                                        coroutineScope.launch {
+                                            xPx.snapTo(xPx.value + it.x)
+                                            yPx.snapTo(yPx.value + it.y)
+                                        }
+                                    },
+                                    onDragFinished = {
+                                        val heightPx = heightDp.dp.roundToPx().toFloat()
+                                        val widthPx = aspectRatio * heightPx
+                                        val maxXPx =
+                                            windowMetrics.bounds.width() - widthPx
+                                        val maxYPx =
+                                            windowMetrics.bounds.height() - heightPx
+
+                                        val left = xPx.value.coerceIn(0.0f, maxXPx)
+                                        val top = yPx.value.coerceIn(0.0f, maxYPx)
+                                        val right = maxXPx - left
+                                        val bottom = maxYPx - top
+                                        val min = minOf(left, top, right, bottom)
+
+                                        with(coroutineScope) {
+                                            if (left == min) launch { xPx.animateTo(0.0f) }
+                                            else if (right == min) launch { xPx.animateTo(maxXPx) }
+                                            if (top == min) launch { yPx.animateTo(0.0f) }
+                                            else if (bottom == min) launch { yPx.animateTo(maxYPx) }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = showSubtitle,
+                        enter = slideIn { IntOffset(0, it.height) },
+                        exit = slideOut { IntOffset(0, it.height) }
+                    ) {
+                        val raiseDp = remember { Animatable(72.0f) }
+                        val shouldRaise = showOverlay && !lock
+                        LaunchedEffect(shouldRaise) {
+                            if (shouldRaise) raiseDp.animateTo(72.0f)
+                            else raiseDp.animateTo(0.0f)
+                        }
+                        AndroidView(
+                            factory = { context -> SubtitleView(context) },
+                            update = { it.setCues(uiState.cues) },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .offset { IntOffset(0, -raiseDp.value.dp.roundToPx()) }
+                        )
+                    }
+                }
+
+                is Error ->
+                    ErrorPane(
+                        message = uiState.message(LocalContext.current),
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                else -> {}
+            }
+
+            val sideIndicatorModifier = Modifier
+                .background(
+                    MaterialTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(32.dp)
+                )
+                .padding(horizontal = 4.dp)
+                .padding(top = 18.dp, bottom = 12.dp)
+
+            // volume indicator
+            AnimatedVisibility(
+                showVolumeBar,
+                modifier = Modifier.align(Alignment.CenterStart),
+                enter = slideIn { size -> IntOffset(-size.width, 0) },
+                exit = slideOut { size -> IntOffset(-size.width, 0) }
+            ) {
+                Row {
+                    Spacer(modifier = Modifier.width(32.dp))
+                    VerticalSlider(
+                        value = currentVolumePercent,
+                        icon = Icons.AutoMirrored.Rounded.VolumeUp,
+                        onValueChange = { },
+                        modifier = sideIndicatorModifier
+                    )
+                }
+            }
+
+            // Brightness indicator
+            AnimatedVisibility(
+                showBrightnessBar,
+                modifier = Modifier.align(Alignment.CenterEnd),
+                enter = slideIn { size -> IntOffset(size.width, 0) },
+                exit = slideOut { size -> IntOffset(size.width, 0) }
+            ) {
+                Row {
+                    VerticalSlider(
+                        value = currentBrightnessPercent,
+                        icon = Icons.Rounded.BrightnessHigh,
+                        onValueChange = { },
+                        modifier = sideIndicatorModifier
+                    )
+                    Spacer(modifier = Modifier.width(32.dp))
+                }
+            }
+
+            // Player control overlay
+            AnimatedVisibility(showOverlay, enter = fadeIn(), exit = fadeOut()) {
+                var timeoutResetSignal by remember { mutableStateOf(false) }
+                if (playing?.isPlaying == true && !isSeeking && !showingModalMenu
+                ) {
+                    LaunchedEffect(timeoutResetSignal) {
+                        delay(3000)
+                        showOverlay = false
+                    }
+                }
+
+                if (!lock) {
+                    Column(
+                        verticalArrangement = Arrangement.SpaceBetween,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.4f))
+                            .pointerInput(Unit) {
+                                detectTapGestures { showOverlay = false }
+                            }
+                    ) {
+                        TopBar(
+                            title = uiState.live?.liveRecordName
+                                ?: stringResource(R.string.loading),
+                            currentSpeed = (uiState as? PlayerCreated)?.requestedSpeed
+                                ?: 1.0f,
+                            onSpeed = {
+                                showingModalMenu = false
+                                onSpeed(it)
+                            },
+                            onSpeedButtonClicked = { showingModalMenu = true },
+                            onSpeedMenuDismiss = { showingModalMenu = false },
+                            onBackButtonClicked = onBackButtonClicked,
+                            onLockButtonClicked = { lock = true },
+                            onPipButtonClicked = {
+                                timeoutResetSignal = !timeoutResetSignal
+                                if (uiState is PlayerCreated) {
                                     currentPipIndex =
                                         if (currentPipIndex + 1 >= uiState.videoPlayers.size) -1
                                         else currentPipIndex + 1
-                                },
-                                onZoom = {
-                                    heightDp = (heightDp * it).coerceIn(72.0f, 256.0f)
-                                },
-                                onDrag = {
-                                    coroutineScope.launch {
-                                        xPx.snapTo(xPx.value + it.x)
-                                        yPx.snapTo(yPx.value + it.y)
-                                    }
-                                },
-                                onDragFinished = {
-                                    val heightPx = heightDp.dp.roundToPx().toFloat()
-                                    val widthPx = aspectRatio * heightPx
-                                    val maxXPx =
-                                        windowMetrics.bounds.width() - widthPx
-                                    val maxYPx =
-                                        windowMetrics.bounds.height() - heightPx
-
-                                    val left = xPx.value.coerceIn(0.0f, maxXPx)
-                                    val top = yPx.value.coerceIn(0.0f, maxYPx)
-                                    val right = maxXPx - left
-                                    val bottom = maxYPx - top
-                                    val min = minOf(left, top, right, bottom)
-
-                                    with(coroutineScope) {
-                                        if (left == min) launch { xPx.animateTo(0.0f) }
-                                        else if (right == min) launch { xPx.animateTo(maxXPx) }
-                                        if (top == min) launch { yPx.animateTo(0.0f) }
-                                        else if (bottom == min) launch { yPx.animateTo(maxYPx) }
-                                    }
                                 }
+                            },
+                            onCcButtonClicked = { showSubtitle = !showSubtitle },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(6.dp)
+                        )
+
+                        CenterControl(
+                            indicatorType = getIndicatorType(uiState),
+                            onPlay = {
+                                timeoutResetSignal = !timeoutResetSignal
+                                onPlay()
+                            },
+                            onPause = {
+                                timeoutResetSignal = !timeoutResetSignal
+                                onPause()
+                            },
+                            onRetry = {
+                                timeoutResetSignal = !timeoutResetSignal
+                                onRetry()
+                            },
+                            onRewind = {
+                                timeoutResetSignal = !timeoutResetSignal
+                                onRewind()
+                            },
+                            onForward = {
+                                timeoutResetSignal = !timeoutResetSignal
+                                onForward()
+                            }
+                        )
+
+                        BottomBar(
+                            currentMillis = currentMillis,
+                            totalMillis = totalMillis,
+                            onSlide = {
+                                isSeeking = true
+                                seekMillis = it
+                            },
+                            onSlideFinished = {
+                                isSeeking = false
+                                onSeek(it)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .height(72.dp)
+                        )
+                    }
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.Top,
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectTapGestures { showOverlay = false }
+                            }
+                    ) {
+                        // additionally adding a mask for contrast
+                        Box(
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .clip(CircleShape)
+                                .wrapContentSize()
+                                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.4f))
+                        ) {
+                            OverlayButton(
+                                Icons.Outlined.Lock,
+                                modifier = Modifier.padding(18.dp),
+                                onClick = { lock = false }
                             )
                         }
                     }
                 }
-
-                AnimatedVisibility(
-                    visible = showSubtitle,
-                    enter = slideIn { IntOffset(0, it.height) },
-                    exit = slideOut { IntOffset(0, it.height) }
-                ) {
-                    val raiseDp = remember { Animatable(72.0f) }
-                    val shouldRaise = showOverlay && !lock
-                    LaunchedEffect(shouldRaise) {
-                        if (shouldRaise) raiseDp.animateTo(72.0f)
-                        else raiseDp.animateTo(0.0f)
-                    }
-                    AndroidView(
-                        factory = { context -> SubtitleView(context) },
-                        update = { it.setCues(uiState.cues) },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .offset { IntOffset(0, -raiseDp.value.dp.roundToPx()) }
-                    )
-                }
             }
 
-            is Error ->
-                ErrorPane(
-                    message = uiState.message(LocalContext.current),
-                    modifier = Modifier.fillMaxSize()
-                )
-
-            else -> {}
+            SeekingIndicator(visible = isSeeking, seekMillis = seekMillis)
+            SpeedupIndicator(visible = speedingUp)
         }
-
-        val sideIndicatorModifier = Modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(32.dp)
-            )
-            .padding(horizontal = 4.dp)
-            .padding(top = 18.dp, bottom = 12.dp)
-
-        // volume indicator
-        AnimatedVisibility(
-            showVolumeBar,
-            modifier = Modifier.align(Alignment.CenterStart),
-            enter = slideIn { size -> IntOffset(-size.width, 0) },
-            exit = slideOut { size -> IntOffset(-size.width, 0) }
-        ) {
-            Row {
-                Spacer(modifier = Modifier.width(32.dp))
-                VerticalSlider(
-                    value = currentVolumePercent,
-                    icon = Icons.AutoMirrored.Rounded.VolumeUp,
-                    onValueChange = { },
-                    modifier = sideIndicatorModifier
-                )
-            }
-        }
-
-        // Brightness indicator
-        AnimatedVisibility(
-            showBrightnessBar,
-            modifier = Modifier.align(Alignment.CenterEnd),
-            enter = slideIn { size -> IntOffset(size.width, 0) },
-            exit = slideOut { size -> IntOffset(size.width, 0) }
-        ) {
-            Row {
-                VerticalSlider(
-                    value = currentBrightnessPercent,
-                    icon = Icons.Rounded.BrightnessHigh,
-                    onValueChange = { },
-                    modifier = sideIndicatorModifier
-                )
-                Spacer(modifier = Modifier.width(32.dp))
-            }
-        }
-
-        // Player control overlay
-        AnimatedVisibility(showOverlay, enter = fadeIn(), exit = fadeOut()) {
-            var timeoutResetSignal by remember { mutableStateOf(false) }
-            if (uiState is Playing
-                && uiState.isPlaying && !isSeeking && !showingModalMenu
-            ) {
-                LaunchedEffect(timeoutResetSignal) {
-                    delay(3000)
-                    showOverlay = false
-                }
-            }
-
-            if (!lock) {
-                Column(
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.4f))
-                        .pointerInput(Unit) {
-                            detectTapGestures { showOverlay = false }
-                        }
-                ) {
-                    TopBar(
-                        title = uiState.live?.liveRecordName ?: stringResource(R.string.loading),
-                        currentSpeed = (uiState as? PlayerCreated)?.requestedSpeed
-                            ?: 1.0f,
-                        onSpeed = {
-                            showingModalMenu = false
-                            onSpeed(it)
-                        },
-                        onSpeedButtonClicked = { showingModalMenu = true },
-                        onSpeedMenuDismiss = { showingModalMenu = false },
-                        onBackButtonClicked = onBackButtonClicked,
-                        onLockButtonClicked = { lock = true },
-                        onPipButtonClicked = {
-                            timeoutResetSignal = !timeoutResetSignal
-                            if (uiState is PlayerCreated) {
-                                currentPipIndex =
-                                    if (currentPipIndex + 1 >= uiState.videoPlayers.size) -1
-                                    else currentPipIndex + 1
-                            }
-                        },
-                        onCcButtonClicked = { showSubtitle = !showSubtitle },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(6.dp)
-                    )
-
-                    CenterControl(
-                        indicatorType = getIndicatorType(uiState),
-                        onPlay = {
-                            timeoutResetSignal = !timeoutResetSignal
-                            onPlay()
-                        },
-                        onPause = {
-                            timeoutResetSignal = !timeoutResetSignal
-                            onPause()
-                        },
-                        onRetry = {
-                            timeoutResetSignal = !timeoutResetSignal
-                            onRetry()
-                        },
-                        onRewind = {
-                            timeoutResetSignal = !timeoutResetSignal
-                            onRewind()
-                        },
-                        onForward = {
-                            timeoutResetSignal = !timeoutResetSignal
-                            onForward()
-                        }
-                    )
-
-                    BottomBar(
-                        currentMillis = if (uiState is Playing) uiState.currentMillis else 0,
-                        totalMillis = if (uiState is Playing) uiState.totalMillis else 0,
-                        onSlide = {
-                            isSeeking = true
-                            seekMillis = it
-                        },
-                        onSlideFinished = {
-                            isSeeking = false
-                            onSeek(it)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .height(72.dp)
-                    )
-                }
-            } else {
-                Column(
-                    verticalArrangement = Arrangement.Top,
-                    horizontalAlignment = Alignment.End,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTapGestures { showOverlay = false }
-                        }
-                ) {
-                    // additionally adding a mask for contrast
-                    Box(
-                        modifier = Modifier
-                            .padding(6.dp)
-                            .clip(CircleShape)
-                            .wrapContentSize()
-                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.4f))
-                    ) {
-                        OverlayButton(
-                            Icons.Outlined.Lock,
-                            modifier = Modifier.padding(18.dp),
-                            onClick = { lock = false }
-                        )
-                    }
-                }
-            }
-        }
-
-        SeekingIndicator(visible = isSeeking, seekMillis = seekMillis)
-        SpeedupIndicator(visible = speedingUp)
     }
 }
 
