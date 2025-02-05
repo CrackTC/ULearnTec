@@ -90,13 +90,13 @@
     <string name="network">网络</string>
     <string name="never">从不</string>
     <string name="always">总是</string>
-    <string name="weeks_format">%1$l周</string>
+    <string name="weeks_format">%1$d周</string>
     <string name="one_week">一周</string>
-    <string name="days_format">%1$l天</string>
+    <string name="days_format">%1$d天</string>
     <string name="one_day">一天</string>
-    <string name="hours_format">%1$l小时</string>
+    <string name="hours_format">%1$d小时</string>
     <string name="one_hour">一小时</string>
-    <string name="ms_format">%1$l毫秒</string>
+    <string name="ms_format">%1$d毫秒</string>
     <string name="appearance">外观</string>
     <string name="theme">主题</string>
     <string name="follow_system">跟随系统</string>
@@ -111,7 +111,7 @@
     <string name="fixed_time">固定时长</string>
     <string name="video_percent">视频百分比</string>
     <string name="swipe_seek_fixed_time">滑动快进/快退固定时长</string>
-    <string name="seconds_format">%1$l秒</string>
+    <string name="seconds_format">%1$d秒</string>
     <string name="swipe_seek_video_percent">滑动快进/快退视频百分比</string>
     <string name="swipe_volume_adjust_percent">滑动音量调节百分比</string>
     <string name="swipe_brightness_adjust_percent">滑动亮度调节百分比</string>

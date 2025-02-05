@@ -90,13 +90,13 @@
     <string name="network">Network</string>
     <string name="never">Never</string>
     <string name="always">Always</string>
-    <string name="weeks_format">%1$l Weeks</string>
+    <string name="weeks_format">%1$d Weeks</string>
     <string name="one_week">One Week</string>
-    <string name="days_format">%1$l Days</string>
+    <string name="days_format">%1$d Days</string>
     <string name="one_day">One Day</string>
-    <string name="hours_format">%1$l Hours</string>
+    <string name="hours_format">%1$d Hours</string>
     <string name="one_hour">One Hour</string>
-    <string name="ms_format">%1$lms</string>
+    <string name="ms_format">%1$dms</string>
     <string name="appearance">Appearance</string>
     <string name="theme">Theme</string>
     <string name="follow_system">Follow System</string>
@@ -111,7 +111,7 @@
     <string name="fixed_time">Fixed Time</string>
     <string name="video_percent">Video Percent</string>
     <string name="swipe_seek_fixed_time">Swipe Seek Fixed Time</string>
-    <string name="seconds_format">%1$l Seconds</string>
+    <string name="seconds_format">%1$d Seconds</string>
     <string name="swipe_seek_video_percent">Swipe Seek Video Percent</string>
     <string name="swipe_volume_adjust_percent">Swipe Volume Adjust Percent</string>
     <string name="swipe_brightness_adjust_percent">Swipe Brightness Adjust Percent</string>
