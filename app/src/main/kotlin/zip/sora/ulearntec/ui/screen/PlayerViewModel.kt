@@ -289,7 +289,7 @@ class PlayerViewModel(
     @OptIn(UnstableApi::class)
     suspend fun initializePlayers(context: Context) {
         val state = _uiState.value
-        if (state !is Pending) throw IllegalStateException()
+        if (state !is Pending) return
 
         val dataSourceFactory =
             if (state.download?.state == Download.STATE_COMPLETED) downloadDataSourceFactory
