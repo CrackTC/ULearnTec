@@ -21,7 +21,7 @@ class ILearnResService internal constructor(
         val videoCode: String,
         val videoName: String,
         val videoPath: String,
-        val videoSize: String
+        val videoSize: String? = null
     )
 
     @Serializable

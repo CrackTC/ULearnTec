@@ -103,6 +103,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import zip.sora.ulearntec.R
 import zip.sora.ulearntec.domain.SwipeSeekMode
+import zip.sora.ulearntec.domain.model.LiveStatus
 import zip.sora.ulearntec.ui.UpdateViewConfiguration
 import zip.sora.ulearntec.ui.component.ErrorPane
 import zip.sora.ulearntec.ui.component.VerticalSlider
@@ -307,39 +308,41 @@ fun PlayerScreen(
                             )
                         },
                 ) {
-                    Box(modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(1.0f)
-                        .pointerInput(windowMetrics.bounds.height(), lock) {
-                            if (!lock) {
-                                detectVerticalDragGestures(
-                                    onDragStart = { showBrightnessBar = true },
-                                    onDragEnd = { showBrightnessBar = false }
-                                ) { _, amount ->
-                                    onBrightnessDelta(
-                                        -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeBrightnessPercent
-                                            ?: return@detectVerticalDragGestures)
-                                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(1.0f)
+                            .pointerInput(windowMetrics.bounds.height(), lock) {
+                                if (!lock) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = { showBrightnessBar = true },
+                                        onDragEnd = { showBrightnessBar = false }
+                                    ) { _, amount ->
+                                        onBrightnessDelta(
+                                            -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeBrightnessPercent
+                                                ?: return@detectVerticalDragGestures)
+                                        )
+                                    }
                                 }
                             }
-                        }
                     )
-                    Box(modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(1.0f)
-                        .pointerInput(windowMetrics.bounds.height(), lock) {
-                            if (!lock) {
-                                detectVerticalDragGestures(
-                                    onDragStart = { showVolumeBar = true },
-                                    onDragEnd = { showVolumeBar = false }
-                                ) { _, amount ->
-                                    onVolumeDelta(
-                                        -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeVolumePercent
-                                            ?: return@detectVerticalDragGestures)
-                                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(1.0f)
+                            .pointerInput(windowMetrics.bounds.height(), lock) {
+                                if (!lock) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = { showVolumeBar = true },
+                                        onDragEnd = { showVolumeBar = false }
+                                    ) { _, amount ->
+                                        onVolumeDelta(
+                                            -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeVolumePercent
+                                                ?: return@detectVerticalDragGestures)
+                                        )
+                                    }
                                 }
                             }
-                        }
                     )
                 }
             }
@@ -512,6 +515,8 @@ fun PlayerScreen(
                         TopBar(
                             title = uiState.live?.liveRecordName
                                 ?: stringResource(R.string.loading),
+                            speedButtonEnabled = uiState.live?.liveStatus == LiveStatus.FINISHED,
+                            closedCaptionButtonEnabled = uiState.live?.liveStatus == LiveStatus.FINISHED,
                             currentSpeed = (uiState as? PlayerCreated)?.requestedSpeed
                                 ?: 1.0f,
                             onSpeed = {
@@ -677,6 +682,8 @@ fun BoxScope.SeekingIndicator(
 fun TopBar(
     title: String,
     currentSpeed: Float,
+    speedButtonEnabled: Boolean,
+    closedCaptionButtonEnabled: Boolean,
     onSpeed: (Float) -> Unit,
     onBackButtonClicked: () -> Unit,
     onLockButtonClicked: () -> Unit,
@@ -694,6 +701,8 @@ fun TopBar(
         )
         SecondaryControlRow(
             currentSpeed = currentSpeed,
+            speedButtonEnabled = speedButtonEnabled,
+            closedCaptionButtonEnabled = closedCaptionButtonEnabled,
             onSpeed = onSpeed,
             onLockButtonClicked = onLockButtonClicked,
             onPipButtonClicked = onPipButtonClicked,
@@ -733,6 +742,8 @@ private fun TitleRow(
 @Composable
 private fun SecondaryControlRow(
     currentSpeed: Float,
+    speedButtonEnabled: Boolean,
+    closedCaptionButtonEnabled: Boolean,
     onLockButtonClicked: () -> Unit,
     onPipButtonClicked: () -> Unit,
     onSpeedButtonClicked: () -> Unit,
@@ -759,46 +770,49 @@ private fun SecondaryControlRow(
             modifier = buttonModifier,
             onClick = onPipButtonClicked
         )
-        Box {
-            OverlayButton(
-                Icons.Outlined.Speed,
-                modifier = buttonModifier,
-                onClick = {
-                    speedSelectorExpanded = true
-                    onSpeedButtonClicked()
-                }
-            )
-            DropdownMenu(
-                expanded = speedSelectorExpanded,
-                onDismissRequest = {
-                    speedSelectorExpanded = false
-                    onSpeedMenuDismiss()
-                }) {
-                listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach {
-                    DropdownMenuItem(
-                        text = { Text(text = "${it}x") },
-                        onClick = {
-                            speedSelectorExpanded = false
-                            onSpeed(it)
-                        },
-                        leadingIcon = {
-                            RadioButton(
-                                selected = currentSpeed == it,
-                                onClick = {
-                                    speedSelectorExpanded = false
-                                    onSpeed(it)
-                                }
-                            )
-                        }
-                    )
+        if (speedButtonEnabled)
+            Box {
+                OverlayButton(
+                    Icons.Outlined.Speed,
+                    modifier = buttonModifier,
+                    onClick = {
+                        speedSelectorExpanded = true
+                        onSpeedButtonClicked()
+                    }
+                )
+                DropdownMenu(
+                    expanded = speedSelectorExpanded,
+                    onDismissRequest = {
+                        speedSelectorExpanded = false
+                        onSpeedMenuDismiss()
+                    }) {
+                    listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach {
+                        DropdownMenuItem(
+                            text = { Text(text = "${it}x") },
+                            onClick = {
+                                speedSelectorExpanded = false
+                                onSpeed(it)
+                            },
+                            leadingIcon = {
+                                RadioButton(
+                                    selected = currentSpeed == it,
+                                    onClick = {
+                                        speedSelectorExpanded = false
+                                        onSpeed(it)
+                                    }
+                                )
+                            }
+                        )
+                    }
                 }
             }
+        if (closedCaptionButtonEnabled) {
+            OverlayButton(
+                Icons.Outlined.ClosedCaption,
+                modifier = buttonModifier,
+                onClick = onCcButtonClicked
+            )
         }
-        OverlayButton(
-            Icons.Outlined.ClosedCaption,
-            modifier = buttonModifier,
-            onClick = onCcButtonClicked
-        )
     }
 }
 
@@ -854,20 +868,20 @@ private fun CenterControl(
 
                 IndicatorType.PLAY -> OverlayButton(
                     icon = Icons.Rounded.PlayArrow,
-                    onClick = onPlay,
-                    modifier = indicatorModifier
+                    modifier = indicatorModifier,
+                    onClick = onPlay
                 )
 
                 IndicatorType.PAUSE -> OverlayButton(
                     icon = Icons.Rounded.Pause,
-                    onClick = onPause,
-                    modifier = indicatorModifier
+                    modifier = indicatorModifier,
+                    onClick = onPause
                 )
 
                 IndicatorType.RETRY -> OverlayButton(
                     icon = Icons.Rounded.Refresh,
-                    onClick = onRetry,
-                    modifier = indicatorModifier
+                    modifier = indicatorModifier,
+                    onClick = onRetry
                 )
             }
         }
@@ -936,7 +950,6 @@ private fun BottomBar(
 @Composable
 private fun OverlayButton(
     icon: ImageVector,
-    enabled: Boolean = true,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -945,7 +958,7 @@ private fun OverlayButton(
         contentDescription = null,
         modifier = Modifier
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick, role = Role.Button) then modifier
+            .clickable(onClick = onClick, role = Role.Button) then modifier
     )
 }
 

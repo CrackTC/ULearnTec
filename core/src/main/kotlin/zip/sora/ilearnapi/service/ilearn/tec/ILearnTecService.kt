@@ -93,7 +93,7 @@ class ILearnTecService internal constructor(
         val classType: String,
         val videoPath: String,
         val videoClassMap: List<VideoClassDto>?,
-        val livePath: String,
+        val livePath: String, // [{hasVideo: number, id: string, rtmpUrl: "rtmp://...", videoCode: "1" | "2" | "3", videoName: "...", videoPath: "https://jwcilesson.jlu.edu.cn/live/de6bedacf20b0db7058dc3cab587dfd4.flv"}]
         val scheduleTimeStart: String,
         val scheduleTimeEnd: String
     )

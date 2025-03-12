@@ -1,8 +1,8 @@
 package zip.sora.ulearntec.ui.screen
 
 import android.content.Context
-import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -316,7 +316,7 @@ class PlayerViewModel(
                         if (phaseUrl.isNotBlank()) {
                             builder.setSubtitleConfigurations(
                                 listOf(
-                                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(phaseUrl))
+                                    MediaItem.SubtitleConfiguration.Builder(phaseUrl.toUri())
                                         .setMimeType(MimeTypes.TEXT_VTT)
                                         .setSelectionFlags(C.SELECTION_FLAG_FORCED)
                                         .build()
@@ -395,7 +395,7 @@ class PlayerViewModel(
             _uiState.update {
                 state.copy(
                     currentMillis = currentPosition,
-                    totalMillis = state.audioPlayer.duration
+                    totalMillis = state.audioPlayer.duration.let { if (it > 0) it else currentPosition }
                 )
             }
 
@@ -469,7 +469,7 @@ class PlayerViewModel(
                         true,
                         ImmutableList.of(),
                         prev.audioPlayer.currentPosition,
-                        prev.audioPlayer.duration,
+                        prev.audioPlayer.duration.let { if (it > 0) it else prev.audioPlayer.currentPosition },
                         prev.live
                     )
                 } else prev
