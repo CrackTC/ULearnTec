@@ -22,7 +22,7 @@ data class NavBarItemData<T : Any>(
 
 val mainNavBarItems = listOf(
     NavBarItemData(
-        route = NavGraph.Main.Course,
+        route = NavGraph.Main.Term,
         label = R.string.course,
         selectedIcon = Icons.Filled.School,
         unselectedIcon = Icons.Outlined.School

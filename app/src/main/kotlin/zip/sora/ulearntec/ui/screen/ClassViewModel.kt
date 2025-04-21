@@ -1,4 +1,4 @@
-package zip.sora.ulearntec.ui.screen.main.course
+package zip.sora.ulearntec.ui.screen
 
 import android.content.Context
 import androidx.annotation.OptIn
@@ -82,7 +82,7 @@ class ClassViewModel(
     private val downloadRepository: DownloadRepository
 ) : ViewModel() {
     private val clazz =
-        savedStateHandle.toRoute<NavGraph.Main.Course.Class>(mapOf(typeOf<Class>() to navTypeOf<Class>())).clazz
+        savedStateHandle.toRoute<NavGraph.Class>(mapOf(typeOf<Class>() to navTypeOf<Class>())).clazz
 
     private val _uiState = MutableStateFlow<ClassUiState>(ClassUiState.Loading(clazz, listOf()))
     val uiState = _uiState.asStateFlow()

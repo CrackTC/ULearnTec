@@ -1,4 +1,4 @@
-package zip.sora.ulearntec.ui.screen.main.course
+package zip.sora.ulearntec.ui.screen.main
 
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedContent
@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.FlightLand
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.outlined.Info
@@ -44,6 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -75,7 +75,6 @@ import zip.sora.ulearntec.ui.navigation.LocalNavAnimatedVisibilityScope
 import zip.sora.ulearntec.ui.navigation.LocalSharedTransitionScope
 import zip.sora.ulearntec.ui.theme.ULearnTecTheme
 import java.time.Instant
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,7 +144,16 @@ fun TermScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(text = stringResource(R.string.classes)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(text = stringResource(R.string.classes)) },
+                actions = {
+                    IconButton(onClick = { showTermDetail = true }) {
+                        Icon(imageVector = Icons.Outlined.Info, contentDescription = null)
+                    }
+                }
+            )
+        },
     ) { innerPadding ->
 
         PullToRefreshBox(
@@ -172,8 +180,6 @@ fun TermScreen(
 
                     gridMode = gridMode,
                     onGridModeChanged = { gridMode = it },
-
-                    onShowTermDetailClicked = { showTermDetail = true },
 
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -298,8 +304,6 @@ private fun SelectionsChipRow(
     gridMode: Boolean,
     onGridModeChanged: (Boolean) -> Unit,
 
-    onShowTermDetailClicked: () -> Unit,
-
     modifier: Modifier = Modifier
 ) {
     var termSelectorExpanded by rememberSaveable { mutableStateOf(false) }
@@ -373,20 +377,6 @@ private fun SelectionsChipRow(
                     imageVector = Icons.Filled.GridView,
                     contentDescription = null,
                     modifier = Modifier.size(FilterChipDefaults.IconSize)
-                )
-            }
-        )
-        AssistChip(
-            enabled = enabled,
-            onClick = onShowTermDetailClicked,
-            label = {
-                Text(text = stringResource(R.string.term_info))
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = null,
-                    modifier = Modifier.size(AssistChipDefaults.IconSize)
                 )
             }
         )

@@ -174,6 +174,7 @@ fun MoreScreen(
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
             }
         }
     }

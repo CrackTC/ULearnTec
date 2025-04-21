@@ -816,7 +816,7 @@ private fun SecondaryControlRow(
     }
 }
 
-private enum class IndicatorType {
+private enum class PlayerIndicatorType {
     LOADING,
     PLAY,
     PAUSE,
@@ -826,19 +826,19 @@ private enum class IndicatorType {
 private fun getIndicatorType(uiState: PlayerUiState) =
     when (uiState) {
         is Playing -> {
-            if (uiState.isPlaying) IndicatorType.PAUSE else IndicatorType.PLAY
+            if (uiState.isPlaying) PlayerIndicatorType.PAUSE else PlayerIndicatorType.PLAY
         }
 
-        is Error -> IndicatorType.RETRY
+        is Error -> PlayerIndicatorType.RETRY
 
         else -> {
-            IndicatorType.LOADING
+            PlayerIndicatorType.LOADING
         }
     }
 
 @Composable
 private fun CenterControl(
-    indicatorType: IndicatorType,
+    indicatorType: PlayerIndicatorType,
     onPlay: () -> Unit,
     onPause: () -> Unit,
     onRetry: () -> Unit,
@@ -862,23 +862,23 @@ private fun CenterControl(
                 .padding(8.dp)
                 .size(48.dp)
             when (it) {
-                IndicatorType.LOADING -> CircularProgressIndicator(
+                PlayerIndicatorType.LOADING -> CircularProgressIndicator(
                     modifier = indicatorModifier,
                 )
 
-                IndicatorType.PLAY -> OverlayButton(
+                PlayerIndicatorType.PLAY -> OverlayButton(
                     icon = Icons.Rounded.PlayArrow,
                     modifier = indicatorModifier,
                     onClick = onPlay
                 )
 
-                IndicatorType.PAUSE -> OverlayButton(
+                PlayerIndicatorType.PAUSE -> OverlayButton(
                     icon = Icons.Rounded.Pause,
                     modifier = indicatorModifier,
                     onClick = onPause
                 )
 
-                IndicatorType.RETRY -> OverlayButton(
+                PlayerIndicatorType.RETRY -> OverlayButton(
                     icon = Icons.Rounded.Refresh,
                     modifier = indicatorModifier,
                     onClick = onRetry

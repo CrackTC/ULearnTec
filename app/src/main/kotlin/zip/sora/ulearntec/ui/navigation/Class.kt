@@ -1,4 +1,4 @@
-package zip.sora.ulearntec.ui.navigation.main.course
+package zip.sora.ulearntec.ui.navigation
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -14,10 +14,8 @@ import androidx.navigation.compose.composable
 import org.koin.androidx.compose.koinViewModel
 import zip.sora.ulearntec.domain.model.Class
 import zip.sora.ulearntec.domain.model.Live
-import zip.sora.ulearntec.ui.navigation.LocalNavAnimatedVisibilityScope
-import zip.sora.ulearntec.ui.navigation.navTypeOf
-import zip.sora.ulearntec.ui.screen.main.course.ClassScreen
-import zip.sora.ulearntec.ui.screen.main.course.ClassViewModel
+import zip.sora.ulearntec.ui.screen.ClassScreen
+import zip.sora.ulearntec.ui.screen.ClassViewModel
 import kotlin.reflect.typeOf
 
 inline fun <reified T : Any> NavGraphBuilder.addClassScreen(

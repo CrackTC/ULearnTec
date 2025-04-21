@@ -1,4 +1,4 @@
-package zip.sora.ulearntec.ui.screen.main.course
+package zip.sora.ulearntec.ui.screen.main
 
 import android.content.Context
 import androidx.lifecycle.ViewModel

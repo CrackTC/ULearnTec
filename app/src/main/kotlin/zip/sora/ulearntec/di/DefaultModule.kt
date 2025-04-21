@@ -48,8 +48,8 @@ import zip.sora.ulearntec.ui.screen.PlayerViewModel
 import zip.sora.ulearntec.ui.screen.main.MoreViewModel
 import zip.sora.ulearntec.ui.screen.main.DownloadViewModel
 import zip.sora.ulearntec.ui.screen.main.HistoryViewModel
-import zip.sora.ulearntec.ui.screen.main.course.ClassViewModel
-import zip.sora.ulearntec.ui.screen.main.course.TermViewModel
+import zip.sora.ulearntec.ui.screen.ClassViewModel
+import zip.sora.ulearntec.ui.screen.main.TermViewModel
 import zip.sora.ulearntec.ui.screen.SettingsViewModel
 import java.io.File
 import java.util.concurrent.Executor

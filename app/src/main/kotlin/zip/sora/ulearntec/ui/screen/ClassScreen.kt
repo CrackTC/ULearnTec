@@ -1,4 +1,4 @@
-package zip.sora.ulearntec.ui.screen.main.course
+package zip.sora.ulearntec.ui.screen
 
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedContent
@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Numbers
 import androidx.compose.material.icons.outlined.Room
 import androidx.compose.material.icons.rounded.Delete
@@ -130,7 +131,7 @@ import zip.sora.ulearntec.ui.theme.ULearnTecTheme
 import java.time.Instant
 import java.time.format.TextStyle
 
-private enum class IndicatorType {
+private enum class DownloadIndicatorType {
     NONE,
     LOADING,
     ERROR,
@@ -141,21 +142,21 @@ private enum class IndicatorType {
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun getDownloadIndicatorType(uiState: ClassUiState): IndicatorType {
-    if (uiState is ClassUiState.Detail.Loading) return IndicatorType.LOADING
-    if (uiState is ClassUiState.Detail.Error) return IndicatorType.ERROR
+private fun getDownloadIndicatorType(uiState: ClassUiState): DownloadIndicatorType {
+    if (uiState is ClassUiState.Detail.Loading) return DownloadIndicatorType.LOADING
+    if (uiState is ClassUiState.Detail.Error) return DownloadIndicatorType.ERROR
     if (uiState is ClassUiState.Detail.Success) {
-        val download = uiState.download ?: return IndicatorType.START
+        val download = uiState.download ?: return DownloadIndicatorType.START
         val state = download.state
         return when (state) {
-            Download.STATE_DOWNLOADING -> IndicatorType.PROGRESS
-            Download.STATE_COMPLETED -> IndicatorType.DELETE
-            Download.STATE_STOPPED -> IndicatorType.RESUME
-            Download.STATE_FAILED -> IndicatorType.ERROR
-            else -> IndicatorType.LOADING
+            Download.STATE_DOWNLOADING -> DownloadIndicatorType.PROGRESS
+            Download.STATE_COMPLETED -> DownloadIndicatorType.DELETE
+            Download.STATE_STOPPED -> DownloadIndicatorType.RESUME
+            Download.STATE_FAILED -> DownloadIndicatorType.ERROR
+            else -> DownloadIndicatorType.LOADING
         }
     }
-    return IndicatorType.NONE
+    return DownloadIndicatorType.NONE
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
@@ -431,33 +432,33 @@ fun ClassScreen(
                 ) {
                     AnimatedContent(getDownloadIndicatorType(uiState)) { type ->
                         when (type) {
-                            IndicatorType.LOADING -> CircularProgressIndicator(
+                            DownloadIndicatorType.LOADING -> CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp)
                             )
 
-                            IndicatorType.ERROR -> Icon(
+                            DownloadIndicatorType.ERROR -> Icon(
                                 imageVector = Icons.Rounded.Error,
                                 contentDescription = null
                             )
 
-                            IndicatorType.START -> Icon(
+                            DownloadIndicatorType.START -> Icon(
                                 imageVector = Icons.Rounded.Download,
                                 contentDescription = null
                             )
 
-                            IndicatorType.PROGRESS -> CircularProgressIndicator(
+                            DownloadIndicatorType.PROGRESS -> CircularProgressIndicator(
                                 progress = { (uiState as ClassUiState.Detail.Success).download!!.progress },
                                 color = MaterialTheme.colorScheme.inversePrimary,
                                 trackColor = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(24.dp)
                             )
 
-                            IndicatorType.DELETE -> Icon(
+                            DownloadIndicatorType.DELETE -> Icon(
                                 imageVector = Icons.Rounded.Delete,
                                 contentDescription = null
                             )
 
-                            IndicatorType.RESUME -> Icon(
+                            DownloadIndicatorType.RESUME -> Icon(
                                 imageVector = Icons.Rounded.Downloading,
                                 contentDescription = null
                             )
@@ -490,6 +491,14 @@ fun ClassScreen(
                     IconButton(onClick = onBackButtonClicked) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showClassDetailSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
                             contentDescription = null
                         )
                     }
@@ -565,7 +574,9 @@ fun ClassScreen(
                                 if (uiState is ClassUiState.Error) {
                                     ErrorPane(
                                         uiState.message(LocalContext.current),
-                                        modifier = Modifier.weight(1.0f).fillMaxWidth()
+                                        modifier = Modifier
+                                            .weight(1.0f)
+                                            .fillMaxWidth()
                                     )
                                 }
                             }
