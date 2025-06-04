@@ -124,14 +124,14 @@ fun SharedTransitionScope.NormalVideoRow(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         players.forEachIndexed { index, player ->
             if (index != currentPipIndex)
                 AndroidView(
-                    modifier = modifier
+                    modifier = Modifier
                         .weight(1.0f, fill = false)
                         .aspectRatio(aspectRatios[index])
                         .sharedElement(
@@ -246,115 +246,14 @@ fun PlayerScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Gesture overlay
-            UpdateViewConfiguration(doubleTapTimeoutMillis = 150) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(WindowInsets.safeGestures.asPaddingValues())
-                        .pointerInput(lock) {
-                            if (!lock) {
-                                detectHorizontalDragGestures(
-                                    onDragStart = {
-                                        seekMillis = currentMillis
-                                        isSeeking = true
-                                    },
-                                    onDragEnd = {
-                                        isSeeking = false
-                                        onSeek(seekMillis)
-                                    },
-                                ) { _, amount ->
-                                    val fullDragMillis = gesturePreferences?.let {
-                                        when (it.swipeSeekMode) {
-                                            SwipeSeekMode.FIXED -> it.swipeSeekFixedMillis
-                                            SwipeSeekMode.PERCENT -> (it.swipeSeekPercent * totalMillis).toLong()
-                                        }
-                                    } ?: return@detectHorizontalDragGestures
-                                    val delta =
-                                        (amount / windowMetrics.bounds.width()) * fullDragMillis
-                                    seekMillis =
-                                        (seekMillis + delta.toLong()).coerceIn(0L, totalMillis)
-                                }
-                            }
-                        }
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = { showOverlay = true },
-                                onPress = {
-                                    if (!lock) {
-                                        awaitRelease()
-                                        if (speedingUp) {
-                                            speedingUp = false
-                                            onSpeed(1.0f)
-                                        }
-                                    }
-                                },
-                                onLongPress = {
-                                    if (!lock) {
-                                        speedingUp = true
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onSpeed(
-                                            gesturePreferences?.longPressSpeed
-                                                ?: return@detectTapGestures
-                                        )
-                                    }
-                                },
-                                onDoubleTap = {
-                                    if (!lock) {
-                                        if (isPlaying == true) onPause()
-                                        else onPlay()
-                                    }
-                                },
-                            )
-                        },
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(1.0f)
-                            .pointerInput(windowMetrics.bounds.height(), lock) {
-                                if (!lock) {
-                                    detectVerticalDragGestures(
-                                        onDragStart = { showBrightnessBar = true },
-                                        onDragEnd = { showBrightnessBar = false }
-                                    ) { _, amount ->
-                                        onBrightnessDelta(
-                                            -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeBrightnessPercent
-                                                ?: return@detectVerticalDragGestures)
-                                        )
-                                    }
-                                }
-                            }
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(1.0f)
-                            .pointerInput(windowMetrics.bounds.height(), lock) {
-                                if (!lock) {
-                                    detectVerticalDragGestures(
-                                        onDragStart = { showVolumeBar = true },
-                                        onDragEnd = { showVolumeBar = false }
-                                    ) { _, amount ->
-                                        onVolumeDelta(
-                                            -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeVolumePercent
-                                                ?: return@detectVerticalDragGestures)
-                                        )
-                                    }
-                                }
-                            }
-                    )
-                }
-            }
+            var heightDp by rememberSaveable { mutableFloatStateOf(192.0f) }
+            val xPx = remember { Animatable(0.0f) }
+            val yPx = remember { Animatable(0.0f) }
 
-            when (uiState) {
-                is Playing -> {
-                    var heightDp by rememberSaveable { mutableFloatStateOf(192.0f) }
-                    val xPx = remember { Animatable(0.0f) }
-                    val yPx = remember { Animatable(0.0f) }
-
-                    SharedTransitionLayout {
-                        AnimatedContent(currentPipIndex) { pipIndex ->
+            SharedTransitionLayout {
+                AnimatedContent(currentPipIndex, modifier = modifier) { pipIndex ->
+                    when (uiState) {
+                        is Playing -> {
                             NormalVideoRow(
                                 uiState.videoPlayers,
                                 uiState.aspectRatios,
@@ -362,88 +261,192 @@ fun PlayerScreen(
                                 this
                             )
 
-                            if (pipIndex >= 0) {
-                                val player = uiState.videoPlayers[pipIndex]
-                                val aspectRatio = uiState.aspectRatios[pipIndex]
-
-                                val coroutineScope = rememberCoroutineScope()
-
-                                PipVideo(
-                                    player = player,
-                                    aspectRatio = aspectRatio,
-                                    offset = { IntOffset(xPx.value.toInt(), yPx.value.toInt()) },
-                                    height = heightDp.dp,
-                                    animatedVisibilityScope = this,
-                                    pointInputKey = windowMetrics,
-                                    lock = lock,
-                                    onDoubleTap = {
-                                        currentPipIndex =
-                                            if (currentPipIndex + 1 >= uiState.videoPlayers.size) -1
-                                            else currentPipIndex + 1
-                                    },
-                                    onZoom = {
-                                        heightDp = (heightDp * it).coerceIn(72.0f, 256.0f)
-                                    },
-                                    onDrag = {
-                                        coroutineScope.launch {
-                                            xPx.snapTo(xPx.value + it.x)
-                                            yPx.snapTo(yPx.value + it.y)
-                                        }
-                                    },
-                                    onDragFinished = {
-                                        val heightPx = heightDp.dp.roundToPx().toFloat()
-                                        val widthPx = aspectRatio * heightPx
-                                        val maxXPx =
-                                            windowMetrics.bounds.width() - widthPx
-                                        val maxYPx =
-                                            windowMetrics.bounds.height() - heightPx
-
-                                        val left = xPx.value.coerceIn(0.0f, maxXPx)
-                                        val top = yPx.value.coerceIn(0.0f, maxYPx)
-                                        val right = maxXPx - left
-                                        val bottom = maxYPx - top
-                                        val min = minOf(left, top, right, bottom)
-
-                                        with(coroutineScope) {
-                                            if (left == min) launch { xPx.animateTo(0.0f) }
-                                            else if (right == min) launch { xPx.animateTo(maxXPx) }
-                                            if (top == min) launch { yPx.animateTo(0.0f) }
-                                            else if (bottom == min) launch { yPx.animateTo(maxYPx) }
-                                        }
-                                    }
+                            AnimatedVisibility(
+                                visible = showSubtitle,
+                                enter = slideIn { IntOffset(0, it.height) },
+                                exit = slideOut { IntOffset(0, it.height) }
+                            ) {
+                                val raiseDp = remember { Animatable(72.0f) }
+                                val shouldRaise = showOverlay && !lock
+                                LaunchedEffect(shouldRaise) {
+                                    if (shouldRaise) raiseDp.animateTo(72.0f)
+                                    else raiseDp.animateTo(0.0f)
+                                }
+                                AndroidView(
+                                    factory = { context -> SubtitleView(context) },
+                                    update = { it.setCues(uiState.cues) },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .offset { IntOffset(0, -raiseDp.value.dp.roundToPx()) }
                                 )
                             }
                         }
+
+                        is Error ->
+                            ErrorPane(
+                                message = uiState.message(LocalContext.current),
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                        else -> {}
                     }
 
-                    AnimatedVisibility(
-                        visible = showSubtitle,
-                        enter = slideIn { IntOffset(0, it.height) },
-                        exit = slideOut { IntOffset(0, it.height) }
-                    ) {
-                        val raiseDp = remember { Animatable(72.0f) }
-                        val shouldRaise = showOverlay && !lock
-                        LaunchedEffect(shouldRaise) {
-                            if (shouldRaise) raiseDp.animateTo(72.0f)
-                            else raiseDp.animateTo(0.0f)
-                        }
-                        AndroidView(
-                            factory = { context -> SubtitleView(context) },
-                            update = { it.setCues(uiState.cues) },
+                    // Gesture overlay
+                    UpdateViewConfiguration(doubleTapTimeoutMillis = 150) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .offset { IntOffset(0, -raiseDp.value.dp.roundToPx()) }
+                                .padding(WindowInsets.safeGestures.asPaddingValues())
+                                .pointerInput(lock) {
+                                    if (!lock) {
+                                        detectHorizontalDragGestures(
+                                            onDragStart = {
+                                                seekMillis = currentMillis
+                                                isSeeking = true
+                                            },
+                                            onDragEnd = {
+                                                isSeeking = false
+                                                onSeek(seekMillis)
+                                            },
+                                        ) { _, amount ->
+                                            val fullDragMillis = gesturePreferences?.let {
+                                                when (it.swipeSeekMode) {
+                                                    SwipeSeekMode.FIXED -> it.swipeSeekFixedMillis
+                                                    SwipeSeekMode.PERCENT -> (it.swipeSeekPercent * totalMillis).toLong()
+                                                }
+                                            } ?: return@detectHorizontalDragGestures
+                                            val delta =
+                                                (amount / windowMetrics.bounds.width()) * fullDragMillis
+                                            seekMillis =
+                                                (seekMillis + delta.toLong()).coerceIn(
+                                                    0L,
+                                                    totalMillis
+                                                )
+                                        }
+                                    }
+                                }
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = { showOverlay = true },
+                                        onPress = {
+                                            if (!lock) {
+                                                awaitRelease()
+                                                if (speedingUp) {
+                                                    speedingUp = false
+                                                    onSpeed(1.0f)
+                                                }
+                                            }
+                                        },
+                                        onLongPress = {
+                                            if (!lock) {
+                                                speedingUp = true
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                onSpeed(
+                                                    gesturePreferences?.longPressSpeed
+                                                        ?: return@detectTapGestures
+                                                )
+                                            }
+                                        },
+                                        onDoubleTap = {
+                                            if (!lock) {
+                                                if (isPlaying == true) onPause()
+                                                else onPlay()
+                                            }
+                                        },
+                                    )
+                                },
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .weight(1.0f)
+                                    .pointerInput(windowMetrics.bounds.height(), lock) {
+                                        if (!lock) {
+                                            detectVerticalDragGestures(
+                                                onDragStart = { showBrightnessBar = true },
+                                                onDragEnd = { showBrightnessBar = false }
+                                            ) { _, amount ->
+                                                onBrightnessDelta(
+                                                    -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeBrightnessPercent
+                                                        ?: return@detectVerticalDragGestures)
+                                                )
+                                            }
+                                        }
+                                    }
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .weight(1.0f)
+                                    .pointerInput(windowMetrics.bounds.height(), lock) {
+                                        if (!lock) {
+                                            detectVerticalDragGestures(
+                                                onDragStart = { showVolumeBar = true },
+                                                onDragEnd = { showVolumeBar = false }
+                                            ) { _, amount ->
+                                                onVolumeDelta(
+                                                    -amount / windowMetrics.bounds.height() * (gesturePreferences?.swipeVolumePercent
+                                                        ?: return@detectVerticalDragGestures)
+                                                )
+                                            }
+                                        }
+                                    }
+                            )
+                        }
+                    }
+
+                    if (uiState is Playing && pipIndex >= 0) {
+                        val player = uiState.videoPlayers[pipIndex]
+                        val aspectRatio = uiState.aspectRatios[pipIndex]
+
+                        val coroutineScope = rememberCoroutineScope()
+
+                        PipVideo(
+                            player = player,
+                            aspectRatio = aspectRatio,
+                            offset = { IntOffset(xPx.value.toInt(), yPx.value.toInt()) },
+                            height = heightDp.dp,
+                            animatedVisibilityScope = this,
+                            pointInputKey = windowMetrics,
+                            lock = lock,
+                            onDoubleTap = {
+                                currentPipIndex =
+                                    if (currentPipIndex + 1 >= uiState.videoPlayers.size) -1
+                                    else currentPipIndex + 1
+                            },
+                            onZoom = {
+                                heightDp = (heightDp * it).coerceIn(72.0f, 256.0f)
+                            },
+                            onDrag = {
+                                coroutineScope.launch {
+                                    xPx.snapTo(xPx.value + it.x)
+                                    yPx.snapTo(yPx.value + it.y)
+                                }
+                            },
+                            onDragFinished = {
+                                val heightPx = heightDp.dp.roundToPx().toFloat()
+                                val widthPx = aspectRatio * heightPx
+                                val maxXPx =
+                                    windowMetrics.bounds.width() - widthPx
+                                val maxYPx =
+                                    windowMetrics.bounds.height() - heightPx
+
+                                val left = xPx.value.coerceIn(0.0f, maxXPx)
+                                val top = yPx.value.coerceIn(0.0f, maxYPx)
+                                val right = maxXPx - left
+                                val bottom = maxYPx - top
+                                val min = minOf(left, top, right, bottom)
+
+                                with(coroutineScope) {
+                                    if (left == min) launch { xPx.animateTo(0.0f) }
+                                    else if (right == min) launch { xPx.animateTo(maxXPx) }
+                                    if (top == min) launch { yPx.animateTo(0.0f) }
+                                    else if (bottom == min) launch { yPx.animateTo(maxYPx) }
+                                }
+                            }
                         )
                     }
                 }
-
-                is Error ->
-                    ErrorPane(
-                        message = uiState.message(LocalContext.current),
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                else -> {}
             }
 
             val sideIndicatorModifier = Modifier
