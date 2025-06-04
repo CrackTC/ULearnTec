@@ -93,7 +93,6 @@ fun HistoryScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HistoryItem(
     onClick: () -> Unit,

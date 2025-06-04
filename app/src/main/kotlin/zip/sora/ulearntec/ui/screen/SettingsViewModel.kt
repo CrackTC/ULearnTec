@@ -1,11 +1,7 @@
 package zip.sora.ulearntec.ui.screen
 
-import android.provider.Settings
-import androidx.activity.BackEventCompat
-import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -14,7 +10,6 @@ import zip.sora.ulearntec.domain.PlayerTheme
 import zip.sora.ulearntec.domain.PreferenceRepository
 import zip.sora.ulearntec.domain.SwipeSeekMode
 import zip.sora.ulearntec.domain.Theme
-import kotlin.math.max
 
 sealed interface SettingsUiState {
     data object Loading : SettingsUiState

@@ -1,8 +1,8 @@
 package zip.sora.ulearntec.data
 
 import android.content.Context
-import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
@@ -31,7 +31,7 @@ class DownloadRepositoryImpl(
         val data = Json.encodeToString(resources).toByteArray()
 
         resources.buildResourcesList().forEach {
-            val request = DownloadRequest.Builder(it, Uri.parse(it))
+            val request = DownloadRequest.Builder(it, it.toUri())
                 .setData(data)
                 .build()
 

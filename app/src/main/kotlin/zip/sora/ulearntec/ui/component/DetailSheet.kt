@@ -1,5 +1,6 @@
 package zip.sora.ulearntec.ui.component
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
@@ -24,12 +25,14 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -38,6 +41,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import zip.sora.ulearntec.R
 
 data class DetailEntry(
@@ -93,10 +97,11 @@ private fun InfoEntry(
     icon: ImageVector,
     overlineText: String,
     headlineText: String,
-    isLink: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLink: Boolean = false
 ) {
-    val clipboardManager = LocalClipboardManager.current
+    val clipboardManager = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     ListItem(
@@ -136,8 +141,10 @@ private fun InfoEntry(
         trailingContent = {
             IconButton(
                 onClick = {
-                    clipboardManager.setText(buildAnnotatedString { append(headlineText) })
-                    Toast.makeText(context, R.string.text_copied, Toast.LENGTH_SHORT).show()
+                    scope.launch {
+                        clipboardManager.setClipEntry(ClipData.newPlainText(headlineText, headlineText).toClipEntry())
+                        Toast.makeText(context, R.string.text_copied, Toast.LENGTH_SHORT).show()
+                    }
                 }
             ) {
                 Icon(

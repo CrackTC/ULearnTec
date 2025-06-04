@@ -28,12 +28,13 @@ class ClockSyncedVideoRendererFactory(
         metadataRendererOutput: MetadataOutput
     ): Array<Renderer> = arrayOf(
         object : MediaCodecVideoRenderer(
-            context,
-            MediaCodecSelector.DEFAULT,
-            0,
-            eventHandler,
-            videoRendererEventListener,
-            0
+            Builder(context).apply {
+                setMediaCodecSelector(MediaCodecSelector.DEFAULT)
+                setAllowedJoiningTimeMs(0)
+                setEventHandler(eventHandler)
+                setEventListener(videoRendererEventListener)
+                setMaxDroppedFramesToNotify(0)
+            }
         ) {
             override fun getMediaClock(): MediaClock {
                 return object : MediaClock {

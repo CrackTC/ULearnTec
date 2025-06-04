@@ -100,7 +100,6 @@ fun DownloadScreen(
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DownloadItem(
     onResume: () -> Unit,

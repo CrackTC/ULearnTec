@@ -3,10 +3,8 @@ package zip.sora.ilearnapi.service.ilearn
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.serializer
 import zip.sora.ilearnapi.auth.ILearnCas
 import zip.sora.ilearnapi.getCookie
