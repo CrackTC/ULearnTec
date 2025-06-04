@@ -110,24 +110,22 @@ fun SettingsScreen(
                     when {
                         it == 0L -> context.getString(R.string.never)
                         it == 1L -> context.getString(R.string.always)
-                        it > WEEK_IN_MILLIS -> context.getString(
-                            R.string.weeks_format,
+                        it >= WEEK_IN_MILLIS -> context.resources.getQuantityString(
+                            R.plurals.weeks_format,
+                            (it / WEEK_IN_MILLIS).toInt(),
                             it / WEEK_IN_MILLIS
                         )
-
-                        it == WEEK_IN_MILLIS -> context.getString(R.string.one_week)
-                        it > DAY_IN_MILLIS -> context.getString(
-                            R.string.days_format,
+                        it >= DAY_IN_MILLIS -> context.resources.getQuantityString(
+                            R.plurals.days_format,
+                            (it / DAY_IN_MILLIS).toInt(),
                             it / DAY_IN_MILLIS
                         )
 
-                        it == DAY_IN_MILLIS -> context.getString(R.string.one_day)
-                        it > HOUR_IN_MILLIS -> context.getString(
-                            R.string.hours_format,
+                        it >= HOUR_IN_MILLIS -> context.resources.getQuantityString(
+                            R.plurals.hours_format,
+                            (it / HOUR_IN_MILLIS).toInt(),
                             it / HOUR_IN_MILLIS
                         )
-
-                        it == HOUR_IN_MILLIS -> context.getString(R.string.one_hour)
                         else -> context.getString(R.string.ms_format, it)
                     }
                 },
@@ -199,8 +197,9 @@ fun SettingsScreen(
                     240_000L
                 ),
                 descriptionSelector = {
-                    context.getString(
-                        R.string.seconds_format,
+                    context.resources.getQuantityString(
+                        R.plurals.seconds_format,
+                        (it / SECOND_IN_MILLIS).toInt(),
                         it / SECOND_IN_MILLIS
                     )
                 },
@@ -300,10 +299,12 @@ fun <T> SelectionSettingEntry(
                     items(items = entries) { entry ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().clickable {
-                                onEntrySelected(entry)
-                                showDialog = false
-                            }
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onEntrySelected(entry)
+                                    showDialog = false
+                                }
                         ) {
                             RadioButton(
                                 selected = entry == currentEntry,

@@ -43,7 +43,6 @@
     <string name="none">无</string>
     <string name="live_detail">直播详情</string>
     <string name="live_id">直播ID</string>
-    <string name="live_name">直播名</string>
     <string name="building_name">教学楼名称</string>
     <string name="week">周</string>
     <string name="resource_id">资源ID</string>
@@ -76,7 +75,6 @@
     <string name="history">历史</string>
     <string name="no_download_found_for_resource">没有找到资源的下载条目</string>
     <string name="download">下载</string>
-    <string name="term_info">学期信息</string>
     <string name="no_lives">没有直播喵</string>
     <string name="no_downloads_yet">还没有下载记录喵</string>
     <string name="license">许可证</string>
@@ -90,12 +88,18 @@
     <string name="network">网络</string>
     <string name="never">从不</string>
     <string name="always">总是</string>
-    <string name="weeks_format">%1$d周</string>
-    <string name="one_week">一周</string>
-    <string name="days_format">%1$d天</string>
-    <string name="one_day">一天</string>
-    <string name="hours_format">%1$d小时</string>
-    <string name="one_hour">一小时</string>
+    <plurals name="weeks_format">
+        <item quantity="other">%1$d周</item>
+    </plurals>
+    <plurals name="days_format">
+        <item quantity="other">%1$d天</item>
+    </plurals>
+    <plurals name="hours_format">
+        <item quantity="other">%1$d小时</item>
+    </plurals>
+    <plurals name="seconds_format">
+        <item quantity="other">%1$d秒</item>
+    </plurals>
     <string name="ms_format">%1$d毫秒</string>
     <string name="appearance">外观</string>
     <string name="theme">主题</string>
@@ -111,7 +115,6 @@
     <string name="fixed_time">固定时长</string>
     <string name="video_percent">视频百分比</string>
     <string name="swipe_seek_fixed_time">滑动快进/快退固定时长</string>
-    <string name="seconds_format">%1$d秒</string>
     <string name="swipe_seek_video_percent">滑动快进/快退视频百分比</string>
     <string name="swipe_volume_adjust_percent">滑动音量调节百分比</string>
     <string name="swipe_brightness_adjust_percent">滑动亮度调节百分比</string>
