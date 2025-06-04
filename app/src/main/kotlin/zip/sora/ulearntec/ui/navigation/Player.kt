@@ -23,6 +23,7 @@ import org.koin.androidx.compose.koinViewModel
 import zip.sora.ulearntec.domain.PlayerTheme
 import zip.sora.ulearntec.ui.ForceLandscape
 import zip.sora.ulearntec.ui.HideSystemBars
+import zip.sora.ulearntec.ui.KeepScreenOn
 import zip.sora.ulearntec.ui.OverrideBrightness
 import zip.sora.ulearntec.ui.screen.PlayerScreen
 import zip.sora.ulearntec.ui.screen.PlayerUiState
@@ -53,6 +54,7 @@ inline fun <reified T : Any> NavGraphBuilder.addPlayerScreen(
         val viewModel: PlayerViewModel = koinViewModel()
         val uiState by viewModel.uiState.collectAsState()
 
+        KeepScreenOn()
         ForceLandscape()
         HideSystemBars()
 
