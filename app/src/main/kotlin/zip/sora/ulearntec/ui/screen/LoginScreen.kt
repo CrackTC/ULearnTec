@@ -1,7 +1,6 @@
 package zip.sora.ulearntec.ui.screen
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
@@ -35,13 +34,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,7 +50,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import zip.sora.ulearntec.R
-import zip.sora.ulearntec.ui.autofill
 import zip.sora.ulearntec.ui.component.LoadingButton
 import zip.sora.ulearntec.ui.theme.ULearnTecTheme
 
@@ -75,7 +74,6 @@ fun LoginScreen(
     }
 }
 
-@OptIn(ExperimentalAnimationGraphicsApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun CredentialForm(
     modifier: Modifier = Modifier,
@@ -123,7 +121,7 @@ private fun CredentialForm(
                 .widthIn(max = 480.dp)
                 .fillMaxWidth()
                 .onFocusChanged { showUsernameHint = it.hasFocus }
-                .autofill(listOf(AutofillType.Username), onFill = { username = it })
+                .semantics { contentType = ContentType.Username }
         )
 
         OutlinedTextField(
@@ -165,7 +163,7 @@ private fun CredentialForm(
             modifier = Modifier
                 .widthIn(max = 480.dp)
                 .fillMaxWidth()
-                .autofill(listOf(AutofillType.Password), onFill = { password = it })
+                .semantics { contentType = ContentType.Password }
         )
 
         LoadingButton(
